@@ -1,12 +1,16 @@
 import numpy as np
 import math
 import pygame
-from quaternions import q_rot,q_mat_rot
-from objreader import read_obj
 import random
 from memory_profiler import profile
 from boids import Boid
 import time
+from collections import deque
+
+from quaternions import q_rot,q_mat_rot
+from objreader import read_obj
+from functions import *
+from constants import *
 
 # more .obj files https://people.sc.fsu.edu/~jburkardt/data/obj/obj.html
 
@@ -17,41 +21,28 @@ import time
         # Render terrain in 8x8 squares where each square is 2 triangles
         # Triangle strips only 3 vertices for first triangle, but every vertex after that builds a new triangle off the last
 
-WIDTH = 720
-HEIGHT = 720
-#WIDTH = 1400
-#HEIGHT = 1080
-ASPECT_RATIO = HEIGHT/WIDTH
-FOVX = math.pi/2    
-FOVY = 2 * math.atan(ASPECT_RATIO * math.tan(FOVX/2))
-
-# define coordinate origin to be in center of the screen, input point is in this form
-SCREEN_ORIGIN = np.array([WIDTH/2, HEIGHT/2,0,1])
-SCREEN_SCALE = np.array([WIDTH/2, HEIGHT/2,1,0])
-
-center = np.array([0,0,654.545])
-
 # Camera is at (0,0) and is always looking down the -z axis
 class Camera:
     def __init__(self):
         self.dir = np.array([0,0,-1,0],dtype='float64')
         self.pos = np.array([0,0,0,1],dtype='float64')
-        self.lightdir = np.array([1,1,1,0],dtype='float64')
+        self.lightdir = np.array([0,0,-1,0],dtype='float64')
         
         # Distance (scalar) to near (projection) plane
-        self.nearz = 360
+        self.nearz = NEAR_Z
         self.lbn = self.nearz * np.array([-math.tan(FOVX/2), -math.tan(FOVY/2), -1.0])
 
         # Distance (scalar) to far plane
-        self.farz = 3600
+        self.farz = FAR_Z
         self.rtf = self.nearz * np.array([math.tan(FOVX/2), math.tan(FOVY/2), -self.farz/self.nearz])
         
         # This is where [0,0,0] is in the canonical viewing space and thus the center of rotation
-        self.center = self.to_frustum(np.array([0,0,0,1]))
+        self.center = self.z_scale(np.array([0,0,0,1]))
         
         # The matrix that will be modified through transitions and rotations
         self.matrix = np.identity(4)
 
+        # Initializing perspective projection matrix
         l,b,n = self.lbn
         r,t,f = self.rtf
         self.perspM = np.array([[2*n/(r-l),0,0,-n*(r+l)/(r-l)],
@@ -59,28 +50,16 @@ class Camera:
                         [0,0,-(n+f)/(f-n),2*n*f/(n-f)],
                         [0,0,-1,0]])
 
-    def perspective_projection(self,point):
-        # Uncomment later if actually updating any of these at any point, but shouldn't be as of my current knowledge
-        """l,b,n = self.nearz * np.array([-math.tan(FOVX/2), -math.tan(FOVY/2), -1.0])
-        r,t,f = self.nearz * np.array([math.tan(FOVX/2), math.tan(FOVY/2), -self.farz/self.nearz])
-        self.perspM = np.array([[2*n/(r-l),0,0,-n*(r+l)/(r-l)],
-                        [0,2*n/(t-b),0,-n*(t+b)/(t-b)],
-                        [0,0,-(n+f)/(f-n),2*n*f/(n-f)],
-                        [0,0,-1,0]])"""
-        
-        point2 = self.perspM @ self.matrix @ point
-        return point2/point2[3]
-
     def transform_point(self, point):
         point2 = self.matrix @ point
         return point2
     
-    def project_point(self, point):
+    def perspective_projection(self, point):
         point2 = self.perspM @ point
-        return point2/point2[3]
-    """def update_cam(self):
-        self.lbn = self.nearz * np.array([-math.tan(FOVX/2), -math.tan(FOVY/2), -1.0])
-        self.rtf = self.nearz * np.array([math.tan(FOVX/2), math.tan(FOVY/2), -self.farz/self.nearz])"""
+        if point2[3] == 0:
+            return point2/0.000001
+        else:
+            return point2/point2[3]
 
     # maybe move this to object class
     def move_cam(self, trans):
@@ -97,7 +76,7 @@ class Camera:
         self.matrix = q_mat_rot(self.matrix, axis, angle)
     
     # converts to canonical viewing space
-    def to_frustum(self,point):
+    def z_scale(self,point):
         n = self.nearz
         f = self.farz
         c1 = 2*f*n/(n-f)
@@ -107,11 +86,6 @@ class Camera:
         y = -point[1]
         return np.array([x,y,z,point[3]])
     
-
-class Triangle:
-    def __init__(self, indices, color) -> None:
-        self.indices = indices
-        self.color = color
 
 # TODO make sure separate objects are drawn in order of their distance to camera
 class Object:
@@ -127,25 +101,17 @@ class Object:
         else:
             self.points = points
 
-        #self.projpoints = points
-
         self.transformpoints = points
         self.todraw = np.array([])
 
         self.numpoints = len(points)
         self.polygons = indices
         self.numfaces = len(self.polygons)
-
         self.lightdir = np.array([0,0,-1,0])
-
-        # TODO maybe combine colors and polygons into one array? Or is it more beneficial to 
-        # reference this array using indices
         
-        self.colorvals = np.array([(0,0,0) for _ in range(self.numfaces)])
-        self.colors = np.array([(i*255/self.numfaces,0,0) for i in range(self.numfaces)])
-        #self.zorder()
-        #self.reorder = enumerate(indices)
-    
+        self.planes = PLANES
+        self.plane_points = PLANE_POINTS
+
     # converts to frustum coordinates
     def to_frustum(self,point):
         x = 360*(point[0]/self.maxval)
@@ -153,92 +119,207 @@ class Object:
         # change to centerval
         z = 360*(point[2]/self.maxval) + 360 + self.cam.center[2]
         return np.array([x,y,z,point[3]])
-    
-    def get_face_normal(self, face):
-        # TODO change this so that if there is an option such that they face away or toward the camera, they face toward
-        # Note: this is if the vertices are in clockwise order. If they are not, then the cross product should be the other way
-        x1, y1, z1, w1 = (face[2] - face[0])
-        x2, y2, z2, w2 = (face[1] - face[0])
-        # returns the vector perpendicular to the face, which I will compare with either the camera direction or the light direction
-        normal = [y1 * z2 - z1 * y2, 
-                  z1 * x2 - x1 * z2, 
-                  x1 * y2 - y1 * x2, 
-                  0]
-        nx, ny, nz, nw = normal
-        norm = math.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
-        if norm != 0:
-            normal = [nx/norm, ny/norm, nz/norm, 0]
-        return normal
-
+                
     def draw(self):
         for i in range(self.numpoints):
             # applies transformations to points
             self.transformpoints[i] = self.cam.transform_point(self.points[i])
-
         self.lightdir = self.cam.transform_point(np.array([0,0,-1,0]))
 
         todraw = []
-        colorvals = []
         for i in range(self.numfaces):
             indices = self.polygons[i]
-            t = self.transformpoints[indices]
-            normal = self.get_face_normal(t)
+            t = [self.transformpoints[i] for i in indices]+[0.0]
+            #t = np.array([self.transformpoints[i] for i in indices]+[0.0],dtype=object)
+            nx, ny, nz, nw = get_face_normal(t)
             #face_center = np.mean(t,axis=0)
             # only draw if face is facing camera i.e. if normal is facing in negative direction
-            coincide = np.dot(normal, t[1] - np.array([0,0,0,0]))
+            coincide = nx * t[1][0] + ny * t[1][1] + nz * t[1][2]
             if coincide < 0:
-                colorval = np.abs((normal[0]*self.lightdir[0] + 
-                                   normal[1]*self.lightdir[1] + 
-                                   normal[2]*self.lightdir[2])/2)
+                normdot = (nx*self.lightdir[0] + 
+                       ny*self.lightdir[1] + 
+                       nz*self.lightdir[2])/2
+                
+                # TODO fix this
+                if normdot < 0:
+                    colorval = -normdot/10
+                else:
+                    colorval = normdot
 
+                t[-1] = colorval
+                #print(t)
                 todraw.append(t)
-                colorvals.append(colorval)
-                #pygame.draw.polygon(self.screen,(185*colorval,245*colorval,185*colorval), t, width=0)
-                # draws normals of each polygon for test
-                #pygame.draw.circle(self.screen,"red", to_pygame(face_center), 2)
-                #pygame.draw.line(self.screen, "white", to_pygame(face_center), to_pygame(face_center + np.append(normal,1)))
-        drawmesh, drawcolors = self.zordermesh(todraw, colorvals)
+
+        """for i in range(self.numfaces):
+            indices = self.polygons[i]
+            t = np.array([self.transformpoints[i] for i in indices]+[0.0],dtype=object)
+            nx, ny, nz, nw = get_face_normal(t)
+            #face_center = np.mean(t,axis=0)
+            # only draw if face is facing camera i.e. if normal is facing in negative direction
+            coincide = nx * t[1][0] + ny * t[1][1] + nz * t[1][2]
+            if coincide < 0:
+                normdot = (nx*self.lightdir[0] + 
+                       ny*self.lightdir[1] + 
+                       nz*self.lightdir[2])/2
+                
+                # TODO fix this
+                if normdot < 0:
+                    colorval = -normdot/10
+                else:
+                    colorval = normdot
+
+                t[-1] = colorval
+                todraw.append(t)"""
+        
+        todraw = self.clip_mesh(todraw)
+        
+        drawmesh = self.zordermesh(todraw)
         for i in range(len(drawmesh)):
-            t = drawmesh[i]
-            c = drawcolors[i]
+            #print(drawmesh[i])
+            t = drawmesh[i][:-1]
+            c = drawmesh[i][-1]
+
             # TODO can make this more efficient?
             # projects points and converts them to pygame coordinates
-            t = [self.cam.project_point(p) for p in t]
+            #print(t)
+            t = [self.cam.perspective_projection(p) for p in t]
+            # TODO add clipping here
+            #exclude = [p for p in t if np.any((p <= 2) | (p >= -2))]
+
+            # gets a list of only the points within the clipping plane
+            #include = t.copy()
+            """include = []
+            for p in t:
+                #if (p[0] > 2) | (p[0] < -2) | (p[1] > 2) | (p[1] < -2) | (p[2] > 2) | (p[2] < -2):
+                    #include.remove(p)
+                if (p[0] <= 2) & (p[0] >= -2) & (p[1] <= 2) & (p[1] >= -2) & (p[2] <= 2) & (p[2] >= -2):
+                    include.append(p)
+            num_inbounds = len(include)"""
+
+            # TODO add method to get the normal of the lines of the out of bounds points to the in bounds points  
+            # depending on the amount of points in bounds.
+            # If there is one point in bounds make one new triangle
+            # If there are two new points, make two new triangles
+            # The triangles should still wind clockwise
+            
+            # TODO data structure
             t = [to_pygame(p) for p in t]
             pygame.draw.polygon(self.screen,(185*c,245*c,185*c), t, width = 0)
-            #pygame.draw.polygon(self.screen,"black", t, width = 1)
+            
+            #pygame.draw.polygon(self.screen,"white", t, width = 1)
+            # draws normals of each polygon for test
+            #pygame.draw.circle(self.screen,"red", to_pygame(face_center), 2)
+            #pygame.draw.line(self.screen, "white", to_pygame(face_center), to_pygame(face_center + np.append(normal,1)))
 
-    def zordermesh(self, mesh, colors):
-        reorder = np.argsort(np.mean(mesh, axis=1)[:,2])[::-1]
-        return np.array(mesh)[reorder], np.array(colors)[reorder]
+    def zordermesh(self, mesh):
+        #start = time.time() 
+        mesh3 = []
+        for i in range(len(mesh)):
+            mesh3.append([m[2] for m in mesh[i][:-1]])
+        
+        means = np.mean(mesh3, axis=1)
+        reorder = np.argsort(means)[::-1]
+        new_mesh = []
+        for i in range(len(mesh)):
+            new_mesh.append(mesh[reorder[i]])
+        #print(time.time() -  start)
+        return new_mesh
+    
+    def zordermesh_old(self, mesh):
+        start = time.time()
+        means = np.mean(mesh[:][:-1], axis=1)
+        # because for some reason the other way doesnt work
+        z_means = np.array([mean[2] for mean in means])
+        reorder = np.argsort(z_means)[::-1]
 
+        #reorder = np.argsort(np.mean(tmp_mesh[:][:-1], axis=1)[:,2])[::-1]
+        new_mesh = np.array(mesh, dtype='object')[reorder]
+        #print(time.time() - start)
+        return new_mesh
 
-class Ray:
-    def __init__(self, origin, dir):
-        self.origin = origin
-        self.dir = dir
-    def draw(self, screen):
-        pygame.draw.line(screen, "white", to_pygame(self.origin), to_pygame(self.origin - self.dir))
+    def clip_mesh(self, t):
+        """start_time = time.time()
+        print("queue")
+        print(start_time)
+        triangle_queue = deque(t)      
+        for i in range(len(self.planes)):
+            plane = self.planes[i]
+            plane_point = self.plane_points[i]
+            for _ in range(len(triangle_queue)):
+                triangle = triangle_queue.popleft()
+                new_triangles = self.clip_triangle(plane, plane_point, triangle)
+                if new_triangles is not None: 
+                    triangle_queue.extend(new_triangles)
+        triangle_queue = list(triangle_queue)
+        print(time.time()-start_time)
+        #return list(triangle_queue)"""
+        
 
-class Hit:
-    def __init__(self, object):
-            self.object = object
-    def hitTriangle(self, ray, triangle, normal):
-        ao = ray.origin - triangle[0]
-        dao = np.cross(ao, ray.dir)
-        determinant = -np.dot(ray.dir,normal)
+        start_time = time.time()
+        triangle_queue = t
+        # TODO maybe change this to using Queue()
+        for i in range(len(self.planes)):
+            plane = self.planes[i]
+            plane_point = self.plane_points[i]
+            for _ in range(len(triangle_queue)):
+                triangle = triangle_queue.pop(0)
+                new_triangles = self.clip_triangle(plane, plane_point, triangle)
+                if new_triangles is not None: triangle_queue.extend(new_triangles)
+        print(time.time()-start_time)
+        #print("\n")
+        return triangle_queue
+    
 
-        dist = np.dot(ao, normal)/determinant
+    def clip_triangle(self, plane, plane_point, triangle):
+        # plane equation: a(x-xo)+b(y-yo)+c(z-zo)=0
+        in_bounds = [None,None,None]
+        num_out = 0
+        vertices = triangle[:-1]
+        for i in range(3):
+            vertex = triangle[i]
+            # TODO change perhaps
+            if signed_distance(plane, plane_point, vertex) < 0:
+                num_out += 1
+            else:
+                in_bounds[i] = vertex
+                
+        if num_out == 0:
+            return [triangle]
+        
+        # if one point is oob, then make 2 new triangles
+        elif num_out == 1:
+            new_points = []
+            for i in range(3):
+                if in_bounds[i] is not None:
+                    new_points.append(in_bounds[i])
+                else:
+                    p4 = line_plane_intersect(plane, plane_point, vertices[(i-1)%3], triangle[i])
+                    new_points.append(p4)
+                    p5 = line_plane_intersect(plane, plane_point, vertices[(i+1)%3], triangle[i])
+                    new_points.append(p5)
 
+            triangle1 = np.array([new_points[0],new_points[1],new_points[2],triangle[-1]], dtype=object)
+            triangle2 = np.array([new_points[0],new_points[2],new_points[3],triangle[-1]], dtype=object)
+            return [triangle1, triangle2]
+        
+        elif num_out == 2:
+            new_vertices = vertices.copy()
+            for i in range(3):
+                if in_bounds[i] is not None:
+                    # intersection of plane and line from current vertex to both oob vertices
+                    new_vertices[(i+1)%3] = line_plane_intersect(plane, plane_point, vertices[(i+1)%3], triangle[i])
+                    new_vertices[(i-1)%3] = line_plane_intersect(plane, plane_point, vertices[(i-1)%3], triangle[i])
+                    new_triangle = np.array([new_vertices[0], new_vertices[1], new_vertices[2], triangle[-1]], dtype=object)
+            return [new_triangle]
+        
+        elif num_out == 3:
+            return None
 
 
 
 def random_color():
     levels = range(32,256,32)
     return tuple(random.choice(levels) for _ in range(3))
-
-def to_pygame(point):
-    return ((point * SCREEN_SCALE) + SCREEN_ORIGIN)[:-2]
 
 def main():
     pygame.init()
@@ -264,16 +345,16 @@ def main():
     object = Object(center,points,indices,cam,screen,maxval)
 
     circlepoint = np.array([0,0,360,1])
-    circlepoint = cam.perspective_projection(circlepoint)
+    #circlepoint = cam.perspective_projection(circlepoint)
 
     angle=math.pi/180
     axis = np.array([0,1,0])
-    circlepoint = q_rot(circlepoint,axis,angle)
+    #circlepoint = q_rot(circlepoint,axis,angle)
 
     held = False
     
-    numx = 16
-    numy = int(numx*ASPECT_RATIO)
+    #numx = 16
+    #numy = int(numx*ASPECT_RATIO)
     #ray1 = Ray(np.array([0,0,0,1]),np.array([1,1,1,0]))
     #rays = np.array([Ray(cam_origin, np.array([(2*i)/numx-1,(2*j)/numy-1,1,0])) for i in range(numx+1) for j in range(numy+1)])
 
@@ -328,10 +409,6 @@ def main():
         #p2 = to_pygame(np.array([0,0,0,1]) + cam.dir)
         #p2 = to_pygame(np.array([1,1,1,1])*-cam.perspective_projection(np.array([0,0,3600,1])))
         #pygame.draw.line(screen, "white", (360,360), p2[:-2])
-
-
-        """for ray in rays:
-            ray.draw(screen)"""
 
         pygame.display.flip()
         clock.tick(60)
