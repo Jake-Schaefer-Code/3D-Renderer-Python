@@ -47,22 +47,16 @@ def q_rot(point, axis, angle):
 # This is used instead of q_rot to update projection matrix in 3D renderer 
 def q_mat_rot(mat, axis, angle):
     r1 = rot_vect(axis, angle)
-    #r1c = q_conjugate(r1)
-    #qmat = np.array([mat[0][0],-mat[0][1],-mat[0][2],-mat[0][3]])
-    
-    rmat = make_q_mat(r1)
-
-    M = rmat @ mat
-    return M
+    return make_q_mat(r1) @ mat
 
 
 def make_q_mat(q):
     w,x,y,z = q
 
     # Quaternion rotation matrix
-    mat = np.array([[2 * (w * w + x * x) - 1, 2 * (x * y - w * z), 2 * (x * z + w * y), 0],
-                    [2 * (x * y + w * z), 2 * (w * w + y * y) - 1, 2 * (y * z - w * x), 0],
-                    [2 * (x * z - w * y), 2 * (y * z + w * x), 2 * (w * w + z * z) -1, 0],
+    mat = np.array([[-2 * (w * w + x * x) + 1, 2 * (x * y - w * z), 2 * (x * z + w * y), 0],
+                    [2 * (x * y + w * z), -2 * (w * w + y * y) + 1, 2 * (y * z - w * x), 0],
+                    [2 * (x * z - w * y), 2 * (y * z + w * x), -2 * (w * w + z * z) +1, 0],
                     [0, 0, 0, 1]])
     """mat = np.identity(4,dtype='float64')
     mat[0][0] = 2 * (w * w + x * x) - 1
