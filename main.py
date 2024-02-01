@@ -14,12 +14,11 @@ from Object import *
 def main():
     pg.init()
     screen = pg.display.set_mode((WIDTH, HEIGHT))
-    running = True
     clock = pg.time.Clock() 
+    running = True
     cam = Camera()
-    indices, points, maxval, normals, all_indices = read_obj('obj_files/mountains.obj')
     position = np.array([0,0,0,0])
-    object = Object(points,position,indices,cam,screen,normals,all_indices,maxval)
+    object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
     held = False 
     rate = SPEED*MAX_FPS

@@ -24,11 +24,6 @@ def normalize_vector(v: np.ndarray) -> np.ndarray:
 def conjugate(q):
     return [q[0],-q[1],-q[2],-q[3]]
 
-def invert_quaternion(q):
-    w, x, y, z = q
-    denom = w**2 + x**2 + y**2 +z**2
-    return [w/denom, -x/denom, -y/denom, -z/denom]
-
 # vector to rotate by
 def rotation_quaternion(v: np.ndarray, theta: float) -> list:
     v = normalize_vector(v)

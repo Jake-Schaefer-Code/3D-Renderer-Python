@@ -4,47 +4,48 @@ from collections import deque
 from functions import *
 from constants import *
 from camera import *
+from objreader import *
 
 class Object:
-    def __init__(self, points: np.ndarray, position: np.ndarray, indices: np.ndarray, camera: Camera, 
-                 screen: pg.display, normals: np.ndarray, all_indices: np.ndarray, maxval: float=1.0, tofrust: bool = True):
+    def __init__(self, camera: Camera, screen: pg.display, filename: str, position: np.ndarray, tofrust: bool = True):
+
         self.cam = camera
         self.screen = screen
-        self.maxval = maxval
-        
+        self.position = position
+        self.filename = filename
+        self.generate_from_obj(tofrust)
+
         self.planes = PLANE_NORMALS
         self.plane_points = PLANE_POINTS
-
-        self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
-        # TODO move this elsewhere?
-        self.points = np.array([p+position for p in self.points])
-
-        self.numpoints = len(points)
-        self.polygons = indices
-        self.numfaces = len(self.polygons)
+        
         self.lightdir = np.array([0,0,-1,0])
         
-        self.transformpoints = points
-        self.normals = normals if normals != [] else [[0,0,0,0] for _ in range(self.numfaces)]
-        
-        
-        self.all_indices = all_indices # List of dictionaries of vertices, normal, and textures for each face
-        self.indices = indices
         self.generate_face_normals()
-        self.normals = np.asarray(self.normals)
-        
 
+    def generate_from_obj(self, tofrust):
+        polygon_vertex_indices, points, maxval, normals, faces = read_obj(f'obj_files/{self.filename}')
+        self.maxval = maxval
+
+        self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
+        self.points = np.array([p+self.position for p in self.points])
+
+        self.numpoints = len(points)
+
+        self.numfaces = len(polygon_vertex_indices)
+        self.normals = normals if normals != [] else [[0,0,0,0] for _ in range(self.numfaces)]
+        self.faces = faces # List of dictionaries of vertices, normal, and textures for each face
+        
     def generate_face_normals(self):
-        for i in range(len(self.all_indices)):
-            if self.all_indices[i]["vn"] == []:
-                vertex_indices = self.all_indices[i]["v"]
+        for i in range(len(self.faces)):
+            if self.faces[i]["vn"] == []:
+                vertex_indices = self.faces[i]["v"]
                 face = [self.points[j] for j in vertex_indices]
                 normal = get_face_normal(face)
                 nx, ny, nz, nw = normal
             else:
-                nx, ny, nz, nw = np.mean(np.array([self.normals[index] for index in self.all_indices[i]["vn"]]), axis=0)
+                nx, ny, nz, nw = np.mean(np.array([self.normals[index] for index in self.faces[i]["vn"]]), axis=0)
             
-            self.all_indices[i]["vn"] = [nx,ny,nz,nw]
+            self.faces[i]["vn"] = [nx,ny,nz,nw]
 
     # converts to frustum coordinates
     def to_frustum(self, point: np.ndarray):
@@ -71,7 +72,7 @@ class Object:
         self.cam.update_cam()
 
         todraw = []
-        for face_values in self.all_indices:
+        for face_values in self.faces:
             vertex_indices = face_values['v']
             normal = face_values['vn']
             nx = normal[0]
@@ -101,15 +102,9 @@ class Object:
             color = face[2]
             
             # Draws Polygons
-            pg.draw.polygon(self.screen,(185*color,245*color,185*color), polygon, width = 0)
+            pg.draw.polygon(self.screen,(255*color,255*color,255*color), polygon, width = 0)
             # Draws edges on triangles
-            pg.draw.polygon(self.screen, "white", polygon, width = 1)
-    
-    
-
-    # This is a function that technically takes over three arguments, so maybe some of them should have a class
-    # this function actually does not need the self argument (it used to and i just didnt remove it)
-    # The name of my function is formatted correctly
+            pg.draw.polygon(self.screen, (20,20,20), polygon, width = 1)
     
     
 # Performs transformations on all points
