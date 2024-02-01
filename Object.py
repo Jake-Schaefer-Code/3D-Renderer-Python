@@ -26,9 +26,6 @@ class Object:
         self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
         # TODO move this elsewhere?
         self.points = np.array([p+position for p in self.points])
-        
-        self.position = position
-        self.center = position
 
         self.numpoints = len(points)
         self.polygons = indices
@@ -52,15 +49,11 @@ class Object:
                 face = [self.points[j] for j in vertex_indices]
                 normal = get_face_normal(face)
                 nx, ny, nz, nw = normal
-                """nx = normal[0]
-                ny = normal[1]
-                nz = normal[2]
-                nw = normal[3]"""
-                
             else:
                 nx, ny, nz, nw = np.mean(np.array([self.normals[index] for index in self.all_indices[i]["vn"]]), axis=0)
+            
             self.all_indices[i]["vn"] = [nx,ny,nz,nw]
-            #self.normals[i] = [nx,ny,nz,nw]
+
     # converts to frustum coordinates
     def to_frustum(self, point: np.ndarray):
         z = NEAR_Z*((point[2])/self.maxval) + 2* self.cam.center[2]
@@ -81,8 +74,6 @@ class Object:
         return list(triangle_queue)
 
     def prepare_mesh(self) -> list:
-        #transform_points = [self.cam.transform_point(point) for point in self.points]
-        #draw_points = [to_pygame(self.cam.perspective_projection(point)) for point in transform_points]
         transform_points = Transformed_List(self.points, self.cam)
         draw_points = Draw_Point_List(transform_points, self.cam)
         self.cam.update_cam()
@@ -97,13 +88,12 @@ class Object:
 
             plane_point = self.points[vertex_indices[1]]
             cam_pos = self.cam.trans_pos
-            # back-face culling: only draw if face is facing camera i.e. if normal is facing in negative direction
+            # Back-face culling: only draw if face is facing camera i.e. if normal is facing in negative direction
             # This is the normal dotted with the view vector pointing from the polygon's surface to the camera's position
             coincide = ((plane_point[0] - cam_pos[0]) * nx + (plane_point[1] - cam_pos[1]) * ny + (plane_point[2] - cam_pos[2]) * nz)
             if coincide < 0:
                 norm_color_dot = (nx * self.lightdir[0] + ny * self.lightdir[1] + nz * self.lightdir[2])
                 # Setting the last index of the face to the colorval
-                #face = [[transform_points[j] for j in vertex_indices], vertex_indices] 
                 face = [[transform_points[j] for j in vertex_indices], [draw_points[j] for j in vertex_indices]] + [-norm_color_dot if norm_color_dot < 0 else norm_color_dot]
                 todraw.append(face)
             
@@ -115,12 +105,8 @@ class Object:
     def draw4(self) -> None:
         draw_mesh = self.prepare_mesh()
         for face in draw_mesh:
-            # TODO maybe do the colors here instead of above
-            # TODO maybe have references to an array of colovals
             polygon = face[1]
             color = face[2]
-            # Projects points and converts them to pygame coordinates
-            #polygon = [to_pygame(self.cam.perspective_projection(p)) for p in face[0]]
             
             # Draws Polygons
             pg.draw.polygon(self.screen,(185*color,245*color,185*color), polygon, width = 0)
@@ -144,43 +130,9 @@ class Transformed_List(list):
         transformed_iterable = [camera.transform_point(point) for point in iterable]
         super().__init__(transformed_iterable)"""
 
-class Projected_List(list):
-    def __new__(cls, points, camera):
-        projected_points = [camera.perspective_projection(point) for point in points]
-        return projected_points
-    
+# Projects points and converts them to pygame coordinates
 class Draw_Point_List(list):
     def __new__(cls, points, camera):
         pygame_points = [to_pygame(camera.perspective_projection(point)) for point in points]
         return pygame_points
 
-class Face:
-    def __init__(self, vertices) -> None:
-        self.vertices = vertices
-        self.numvertices = len(vertices)
-        self.normal = None
-        self.color = (0,0,0)
-
-
-
-def zordermesh(mesh: list) -> list:
-    mesh_size = len(mesh)
-    means = [0 for _ in range(mesh_size)]
-    for i in range(mesh_size):
-        length = len(mesh[i][0])
-        mean = 0
-        for j in range(length):
-            mean+=mesh[i][0][j][2]
-        mean /= length
-        means[i] = mean
-
-    if means == []:
-        return mesh
-    #for i in range(len(mesh3)):
-    #   means.append(np.mean(mesh3[i]))
-
-    #means = np.mean(mesh3, axis=1)
-    #sorted_indices = sorted(enumerate(means), key=lambda x: x[1])
-    #reorder = [index for index, _ in sorted_indices]
-    reorder = np.argsort(means)[::-1]
-    return [mesh[reorder[i]] for i in range(mesh_size)]
