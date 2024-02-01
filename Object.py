@@ -8,7 +8,6 @@ from objreader import *
 
 class Object:
     def __init__(self, camera: Camera, screen: pg.display, filename: str, position: np.ndarray, tofrust: bool = True):
-
         self.cam = camera
         self.screen = screen
         self.position = position
@@ -17,9 +16,6 @@ class Object:
 
         self.planes = PLANE_NORMALS
         self.plane_points = PLANE_POINTS
-        
-        self.lightdir = np.array([0,0,-1,0])
-        
         self.generate_face_normals()
 
     def generate_from_obj(self, tofrust):
@@ -87,7 +83,8 @@ class Object:
             # This is the normal dotted with the view vector pointing from the polygon's surface to the camera's position
             coincide = ((plane_point[0] - cam_pos[0]) * nx + (plane_point[1] - cam_pos[1]) * ny + (plane_point[2] - cam_pos[2]) * nz)
             if coincide < 0:
-                norm_color_dot = (nx * self.lightdir[0] + ny * self.lightdir[1] + nz * self.lightdir[2])
+                lightdir = self.cam.lightdir
+                norm_color_dot = (nx * lightdir[0] + ny * lightdir[1] + nz * lightdir[2])
                 # Setting the last index of the face to the colorval
                 face = [[transform_points[j] for j in vertex_indices], [draw_points[j] for j in vertex_indices]] + [-norm_color_dot if norm_color_dot < 0 else norm_color_dot]
                 todraw.append(face)
@@ -102,7 +99,6 @@ class Object:
         for face in draw_mesh:
             polygon = face[1]
             color = face[2]
-            
             # Draws Polygons
             pg.draw.polygon(self.screen,(255*color,255*color,255*color), polygon, width = 0)
             # Draws edges on triangles

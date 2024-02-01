@@ -9,6 +9,7 @@ class Camera:
     def __init__(self):
         self.pos = np.array([0,0,0,1])
         self.trans_pos = np.array([0,0,0,1])
+        self.lightdir = np.array([0,0,-1,0])
         
         # Clipping planes (only sides, no near and far planes)
         self.planes = PLANE_NORMALS
