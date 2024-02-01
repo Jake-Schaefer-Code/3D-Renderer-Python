@@ -20,9 +20,9 @@ class Camera:
         self.farz = FAR_Z
 
         # Left, Bottom, Near coordinates
-        self.lbn = np.array([-math.tan(FOVX/2)*NEAR_Z, -math.tan(FOVX/2)*NEAR_Z/ASPECT_RATIO, NEAR_Z])
+        self.lbn = np.array([-NEAR_PLANE_WIDTH/2, -NEAR_PLANE_HEIGHT/2, NEAR_Z])
         # Right, Top, Far coordinates
-        self.rtf = np.array([math.tan(FOVX/2)*NEAR_Z, math.tan(FOVX/2)*NEAR_Z/ASPECT_RATIO, FAR_Z])
+        self.rtf = np.array([ NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
 
         # This is where [0,0,0] is in the canonical viewing space and thus the center of rotation
         self.center = self.z_scale(np.array([0,0,0,1]))
