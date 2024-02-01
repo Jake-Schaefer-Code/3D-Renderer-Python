@@ -20,7 +20,6 @@ def main(testing=False):
     object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
     held = False 
-    rate = SPEED*MAX_FPS
 
     if testing:
         profiler = cProfile.Profile()
@@ -34,8 +33,8 @@ def main(testing=False):
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
         stats.print_stats(40)
-    if not testing:
     
+    if not testing:
         while running:
             for event in pg.event.get():
                 if event.type == pg.QUIT: running = False
@@ -59,6 +58,6 @@ def main(testing=False):
 
 
 if __name__ == '__main__':
-    main()
+    main(True)
 pg.quit()
 
