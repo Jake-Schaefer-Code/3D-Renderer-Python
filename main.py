@@ -29,7 +29,7 @@ def main(testing=False):
             cam.rotate_cam(np.array([1,0,0]),angle)
             cam.move_cam([0,0,10,0])
             screen.fill("slate gray")
-            object.draw4()
+            object.draw()
             pg.display.flip()
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
@@ -69,7 +69,7 @@ def main(testing=False):
 
             # DRAWING SCREEN
             screen.fill("black")
-            object.draw4()
+            object.draw()
 
             pg.display.flip()
             clock.tick(60)

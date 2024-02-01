@@ -97,7 +97,7 @@ class Object:
         todraw = self.clip_mesh(todraw)
         return todraw
 
-    def draw4(self) -> None:
+    def draw(self) -> None:
         draw_mesh = self.prepare_mesh()
         for face in draw_mesh:
             polygon = face[1]
