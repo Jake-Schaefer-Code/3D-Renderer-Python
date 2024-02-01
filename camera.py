@@ -4,8 +4,6 @@ import math
 from quaternions import *
 from functions import *
 from constants import *
-from numba import njit, prange
-
 
 class Camera:
     def __init__(self):
