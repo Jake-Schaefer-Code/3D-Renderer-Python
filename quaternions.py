@@ -1,8 +1,5 @@
 import numpy as np
 import math
-from scipy.spatial.transform import Rotation as R
-
-QUATERNION_MATRIX = np.eye(4,4)
 
 def quaternion_multiplication(q1, q2):
     w1, x1, y1, z1 = q1
@@ -21,7 +18,7 @@ def normalize_vector(v: np.ndarray) -> np.ndarray:
         v = v / mag
     return v
 
-def conjugate(q):
+def conjugate(q: list):
     return [q[0],-q[1],-q[2],-q[3]]
 
 # vector to rotate by
@@ -48,7 +45,7 @@ def q_mat_rot(mat: np.ndarray, axis: np.ndarray, angle: float) -> np.ndarray:
     return make_q_mat(q) @ mat
 
 
-def make_q_mat(q) -> np.ndarray:
+def make_q_mat(q: list) -> np.ndarray:
     w,x,y,z = q
     # Quaternion rotation matrix
     return np.array([[2 * (w * w + x * x) - 1,  2 * (x * y - w * z),     2 * (x * z + w * y),     0],
