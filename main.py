@@ -15,7 +15,7 @@ def main(testing=False):
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     clock = pg.time.Clock() 
     running = True
-    cam = Camera()
+    cam = Camera(clock)
     position = np.array([0,0,0,0])
     object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
@@ -47,32 +47,15 @@ def main(testing=False):
                     # Rotate about y axis when mouse moves L->R and x-axis when mouse moves UP->DOWN
                     cam.rotate_cam(np.array([1,0,0]),-angle*dy/10)
                     cam.rotate_cam(np.array([0,1,0]),angle*dx/10)
-
-            # CONTROLS
-            keys = pg.key.get_pressed()
-            # if want simultaneous movement change these all to ifs
-            fps = clock.get_fps()
-            if fps == 0:
-                fps = 30
-            if keys[pg.K_w]:
-                cam.move_cam(np.array([0,0,rate/fps,0]))
-            elif keys[pg.K_s]:
-                cam.move_cam(np.array([0,0,-rate/fps,0]))
-            if keys[pg.K_d]:
-                cam.move_cam(np.array([rate/fps,0,0,0]))
-            elif keys[pg.K_a]:
-                cam.move_cam(np.array([-rate/fps,0,0,0]))
-            if keys[pg.K_SPACE]:
-                cam.move_cam(np.array([0,-rate/fps,0,0]))
-            elif keys[pg.K_LSHIFT]:
-                cam.move_cam(np.array([0,rate/fps,0,0]))
-
+            cam.check_movement()
+            
             # DRAWING SCREEN
             screen.fill("black")
             object.draw()
 
             pg.display.flip()
             clock.tick(60)
+            print(clock)
 
 
 if __name__ == '__main__':

@@ -108,12 +108,10 @@ class Object:
 # Performs transformations on all points
 class Transformed_List(list):
     def __new__(cls, points, camera):
-        transformed_points = [camera.transform_point(point) for point in points]
-        return transformed_points
+        return [camera.transform_point(point) for point in points]
 
 # Projects points and converts them to pygame coordinates
 class Draw_Point_List(list):
     def __new__(cls, points, camera):
-        pygame_points = [to_pygame(camera.perspective_projection(point)) for point in points]
-        return pygame_points
+        return [to_pygame(camera.perspective_projection(point)) for point in points]
 

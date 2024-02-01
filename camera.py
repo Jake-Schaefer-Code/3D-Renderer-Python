@@ -1,16 +1,16 @@
 import numpy as np
-import math
+import pygame as pg
 
 from quaternions import *
 from functions import *
 from constants import *
 
 class Camera:
-    def __init__(self):
+    def __init__(self, clock):
         self.pos = np.array([0,0,0,1])
         self.trans_pos = np.array([0,0,0,1])
         self.lightdir = np.array([0,0,-1,0])
-        
+        self.clock = clock
         # Clipping planes (only sides, no near and far planes)
         self.planes = PLANE_NORMALS
         # FOV
@@ -42,11 +42,39 @@ class Camera:
         if r == -l and t == -b:
             self.perspM[0][3] = 0
             self.perspM[1][3] = 0
-    
+
+
+        # Movement stuff
+        self.rate = SPEED * MAX_FPS
+        self.move_z = np.array([0,0,self.rate,0])
+        self.move_y = np.array([0,self.rate,0,0])
+        self.move_x = np.array([self.rate,0,0,0])
+
     # Updates the camera position as if it was being moved
     def update_cam(self):
         inv_matrix = np.linalg.inv(self.matrix)
         self.trans_pos = inv_matrix @ self.pos
+
+    def check_movement(self):
+        # if want simultaneous movement change these all to ifs
+        fps = self.clock.get_fps()
+        # CONTROLS
+        keys = pg.key.get_pressed()
+        if fps == 0:
+            fps = 30
+        if keys[pg.K_w]:
+            self.move_cam(self.move_z/fps)
+        elif keys[pg.K_s]:
+            self.move_cam(-self.move_z/fps)
+        if keys[pg.K_d]:
+            self.move_cam(self.move_x/fps)
+        elif keys[pg.K_a]:
+            self.move_cam(-self.move_x/fps)
+        if keys[pg.K_SPACE]:
+            self.move_cam(-self.move_y/fps)
+        elif keys[pg.K_LSHIFT]:
+            self.move_cam(self.move_y/fps)
+
 
     # Applying transformation matrix
     def transform_point(self, point) -> np.ndarray:
