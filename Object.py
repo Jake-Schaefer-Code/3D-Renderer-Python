@@ -69,6 +69,8 @@ class Object:
     def prepare_mesh(self) -> list:
         transform_points = Transformed_List(self.points, self.cam)
         draw_points = Draw_Point_List(transform_points, self.cam)
+        #transform_points = [self.cam.transform_point(point) for point in self.points]
+        #draw_points = [to_pygame(self.cam.perspective_projection(point)) for point in transform_points]
         self.cam.update_cam()
 
         todraw = []

@@ -23,12 +23,17 @@ def main(testing=False):
     rate = SPEED*MAX_FPS
 
     if testing:
+        profiler = cProfile.Profile()
+        profiler.enable()
         for _ in range(100):
             cam.rotate_cam(np.array([1,0,0]),angle)
             cam.move_cam([0,0,10,0])
             screen.fill("slate gray")
             object.draw4()
             pg.display.flip()
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats(40)
     if not testing:
     
         while running:
@@ -71,13 +76,6 @@ def main(testing=False):
 
 
 if __name__ == '__main__':
-    profiler = cProfile.Profile()
-    profiler.enable()
-    main(True)
-    profiler.disable()
-    stats = pstats.Stats(profiler).sort_stats('cumtime')
-    stats.print_stats(40)
     main()
-
 pg.quit()
 
