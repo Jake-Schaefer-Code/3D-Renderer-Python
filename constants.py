@@ -40,4 +40,5 @@ PLANE_POINTS = NEAR_Z * np.array([np.array([0, 0, 0, 0]), # right
                                   np.array([0, 0, 0, 0])])
 
 BACKGROUND_COLOR = (40,40,40)
+SPEED = 0.025
 MAX_FPS = 60

@@ -22,7 +22,7 @@ def main():
     object = Object(points,position,indices,cam,screen,normals,all_indices,maxval)
     angle=math.pi/180
     held = False 
-    rate = 0.025*MAX_FPS
+    rate = SPEED*MAX_FPS
     
     while running:
         for event in pg.event.get():
@@ -54,15 +54,6 @@ def main():
             cam.move_cam(np.array([0,-rate/fps,0,0]))
         elif keys[pg.K_LSHIFT]:
             cam.move_cam(np.array([0,rate/fps,0,0]))
-        elif keys[pg.K_t]:
-            cam.third_person = not cam.third_person
-            print("POV", cam.third_person)
-        if keys[pg.K_UP]:
-            cam.fovx += math.pi/180
-            cam.update()
-        elif keys[pg.K_DOWN]:
-            cam.fovx -= math.pi/180
-            cam.update()
 
         # DRAWING SCREEN
         screen.fill("black")
@@ -76,3 +67,4 @@ if __name__ == '__main__':
     main()
 
 pg.quit()
+

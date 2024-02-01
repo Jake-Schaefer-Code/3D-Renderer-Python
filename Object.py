@@ -1,17 +1,9 @@
 import numpy as np
-import math
 import pygame as pg
-import random
 from collections import deque
-import cProfile,pstats
-import cython
-import numba
-
 from functions import *
 from constants import *
 from camera import *
-
-
 
 class Object:
     def __init__(self, points: np.ndarray, position: np.ndarray, indices: np.ndarray, camera: Camera, 
@@ -120,15 +112,11 @@ class Object:
     # The name of my function is formatted correctly
     
     
-
+# Performs transformations on all points
 class Transformed_List(list):
     def __new__(cls, points, camera):
         transformed_points = [camera.transform_point(point) for point in points]
         return transformed_points
-    
-    """def __init__(self, iterable, camera):
-        transformed_iterable = [camera.transform_point(point) for point in iterable]
-        super().__init__(transformed_iterable)"""
 
 # Projects points and converts them to pygame coordinates
 class Draw_Point_List(list):
