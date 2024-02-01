@@ -11,11 +11,11 @@ HALFHEIGHT = HEIGHT/2
 ASPECT_RATIO = WIDTH/HEIGHT
 # Distance to far plane
 
-FOVX = math.pi/2
-FOVY = 2 * math.atan(ASPECT_RATIO * math.tan(FOVX/2))
+#FOV (width FOV)
+FOV = math.pi/2
 # Distance to Near Plane
 nearestApproachToPlayer = 1
-NEAR_Z = nearestApproachToPlayer / (1 + math.tan(FOVX/2)**2 * (ASPECT_RATIO**2 + 1))**0.5
+NEAR_Z = nearestApproachToPlayer / (1 + math.tan(FOV/2)**2 * (ASPECT_RATIO**2 + 1))**0.5
 FAR_Z = 10*NEAR_Z
 
 # define coordinate origin to be in center of the screen, input point is in this form
@@ -29,10 +29,10 @@ PLANES = np.array([np.array([-NEAR_Z, 0, WIDTH/2, 0]) , # right
                    np.array([0, NEAR_Z, HEIGHT/2, 0])]) # top
 
 
-PLANES = np.array([np.array([-NEAR_Z, 0, math.tan(FOVX/2)*NEAR_Z, 0]) , # right
-                   np.array([NEAR_Z, 0, math.tan(FOVX/2)*NEAR_Z, 0]) ,  # left
-                   np.array([0, -NEAR_Z, math.tan(FOVX/2)*NEAR_Z/ASPECT_RATIO, 0]) , # bottom
-                   np.array([0, NEAR_Z, math.tan(FOVX/2)*NEAR_Z/ASPECT_RATIO, 0])])
+PLANES = np.array([np.array([-NEAR_Z, 0, math.tan(FOV/2)*NEAR_Z, 0]) , # right
+                   np.array([NEAR_Z, 0, math.tan(FOV/2)*NEAR_Z, 0]) ,  # left
+                   np.array([0, -NEAR_Z, math.tan(FOV/2)*NEAR_Z/ASPECT_RATIO, 0]) , # bottom
+                   np.array([0, NEAR_Z, math.tan(FOV/2)*NEAR_Z/ASPECT_RATIO, 0])])
 
 # Normalizing plane normal vectors
 PLANE_NORMALS = np.array([plane/math.sqrt(plane[0]**2 + plane[1]**2 + plane[2]**2) for plane in PLANES])

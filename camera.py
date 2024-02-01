@@ -15,7 +15,7 @@ class Camera:
         # Clipping planes (only sides, no near and far planes)
         self.planes = PLANE_NORMALS
         # FOV
-        self.fovx= FOVX
+        self.fovx = FOV
         # Distance to near (projection) plane
         self.nearz = NEAR_Z
         # Distance to far plane
