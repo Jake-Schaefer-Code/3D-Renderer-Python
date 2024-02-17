@@ -12,27 +12,30 @@ from Object import *
 
 def main(testing=False):
     pg.init()
-    screen = pg.display.set_mode((WIDTH, HEIGHT))
+    screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pg.time.Clock() 
     running = True
     cam = Camera(clock)
     position = np.array([0,0,0,0])
     object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
-    held = False 
+    held = False
 
     if testing:
         profiler = cProfile.Profile()
         profiler.enable()
-        for _ in range(100):
+        for i in range(100):
             cam.rotate_cam(np.array([1,0,0]),angle)
-            cam.move_cam([0,0,10,0])
+            cam.move_cam([0,0,0.025,0])
             screen.fill("slate gray")
             object.draw()
             pg.display.flip()
+
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
         stats.print_stats(40)
+        print('NEWTIME', object.newtime)
+        print('OLDTIME', object.oldtime)
     
     if not testing:
         while running:
@@ -49,12 +52,12 @@ def main(testing=False):
             cam.check_movement()
             
             # DRAWING SCREEN
-            screen.fill("black")
+            screen.fill(BACKGROUND_COLOR)
             object.draw()
 
             pg.display.flip()
             clock.tick(60)
-            print(clock)
+            #print(clock)
 
 
 if __name__ == '__main__':

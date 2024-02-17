@@ -1,30 +1,56 @@
 import math
 import numpy as np
+import time
+from matrices import *
 """Constants for 3D Renderer"""
 
 # Desired width and height of screen
-WIDTH = 1080    
-HEIGHT = 720
-HALFWIDTH = WIDTH/2
-HALFHEIGHT = HEIGHT/2
-ASPECT_RATIO = WIDTH/HEIGHT
+SCREEN_WIDTH = 1080    
+SCREEN_HEIGHT = 720
+HALFWIDTH = SCREEN_WIDTH/2
+HALFHEIGHT = SCREEN_HEIGHT/2
+
+# Aspect ratio that converts y to x
+ASPECT_RATIO = SCREEN_WIDTH/SCREEN_HEIGHT
 
 
-# FOV (width FOV)
-FOV = math.pi/2
+
+# FOV in y
+FOVY = math.pi/2
 # Could be replaced with hitbox code later on
 NEAREST_VAL = 1
-# Distance to Near Plane
-NEAR_Z = NEAREST_VAL / (1 + math.tan(FOV/2)**2 * (ASPECT_RATIO**2 + 1))**0.5
-# Distance to far plane
-FAR_Z = 10*NEAR_Z
+# Distance to Near Plane -> closest value to see -> 0.1 = 10 cm
+NEAR_Z = 0.1
+# Distance to far plane -> furthest value to see -> 1 = 1 m
+FAR_Z = 10
 
-NEAR_PLANE_WIDTH = 2 * math.tan(FOV/2)*NEAR_Z
-NEAR_PLANE_HEIGHT = 2 * math.tan(FOV/2)*NEAR_Z/ASPECT_RATIO
+# NEAR_Z / (HEIGHT/2) -> y scaling factor
+FY = 1/math.tan(FOVY/2)
+
+# NEAR_Z / (WIDTH/2) -> x scaling factor
+FX = (1/math.tan(FOVY/2))/ASPECT_RATIO
+
+NEAR_PLANE_HEIGHT = 2 * math.tan(FOVY/2) * NEAR_Z
+NEAR_PLANE_WIDTH = 2 * math.tan(FOVY/2) * NEAR_Z * ASPECT_RATIO
+
+print(NEAR_PLANE_WIDTH, NEAR_PLANE_HEIGHT)
+
+FOVX = math.atan((NEAR_PLANE_WIDTH/2)/NEAR_Z)*2
+print(FOVX, FOVY)
+print(ASPECT_RATIO)
 
 # define coordinate origin to be in center of the screen, input point is in this form
-SCREEN_ORIGIN = np.array([WIDTH/2, HEIGHT/2,0,1])
-SCREEN_SCALE = np.array([WIDTH/2, HEIGHT/2,1,0])
+SCREEN_ORIGIN = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,0,1])
+SCREEN_SCALE = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,1,0])
+
+
+projM = create_projection_matrix([-NEAR_PLANE_WIDTH/2, -NEAR_PLANE_HEIGHT/2, NEAR_Z],[NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
+pn = projM @ np.array([-0.19101796, 0, 0.2,1])
+print(pn/pn[3])
+
+pf = projM @ np.array([0,0,FAR_Z,1])
+print(pf/pf[3])
+
 
 PLANES = np.array([np.array([-NEAR_Z, 0, NEAR_PLANE_WIDTH/2, 0]) , # right
                    np.array([NEAR_Z, 0, NEAR_PLANE_WIDTH/2, 0]) ,  # left
@@ -34,11 +60,37 @@ PLANES = np.array([np.array([-NEAR_Z, 0, NEAR_PLANE_WIDTH/2, 0]) , # right
 # Normalizing plane normal vectors
 PLANE_NORMALS = np.array([plane/math.sqrt(plane[0]**2 + plane[1]**2 + plane[2]**2) for plane in PLANES])
 
+
+PLANES = np.array([np.array([-math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]) , # right
+                   np.array([math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]) ,  # left
+                   np.array([0, -math.cos(FOVY/2), math.sin(FOVY/2), 0]) , # bottom
+                   np.array([0, math.cos(FOVY/2), math.sin(FOVY/2), 0])]) # top
+
+
+PLANE_NORMALS = np.array([plane/math.sqrt(plane[0]**2 + plane[1]**2 + plane[2]**2) for plane in PLANES])
+
+
 PLANE_POINTS = NEAR_Z * np.array([np.array([0, 0, 0, 0]), # right
                                   np.array([0, 0, 0, 0]),  # left
                                   np.array([0, 0, 0, 0]), # bottom
                                   np.array([0, 0, 0, 0])])
 
-BACKGROUND_COLOR = (40,40,40)
+BACKGROUND_COLOR = (80,85,90)
 SPEED = 0.025
 MAX_FPS = 60
+"""
+TRANSLATION_MATRIX = np.identity(4)
+
+trans_vect = np.array([1,1,1,1])
+
+start = time.time()
+TRANSLATION_MATRIX[:,3] = trans_vect
+print(time.time() - start)
+
+start = time.time()
+TRANSLATION_MATRIX[0][3] = trans_vect[0]
+TRANSLATION_MATRIX[1][3] = trans_vect[1]
+TRANSLATION_MATRIX[2][3] = trans_vect[2]
+print(time.time() - start)
+
+"""

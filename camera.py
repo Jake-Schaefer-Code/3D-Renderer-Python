@@ -1,9 +1,11 @@
 import numpy as np
 import pygame as pg
+import time
 
 from quaternions import *
 from functions import *
 from constants import *
+from matrices import *
 
 class Camera:
     def __init__(self, clock):
@@ -12,9 +14,9 @@ class Camera:
         self.lightdir = np.array([0,0,-1,0])
         self.clock = clock
         # Clipping planes (only sides, no near and far planes)
-        self.planes = PLANE_NORMALS
+        self.clipping_planes = PLANE_NORMALS
         # FOV
-        self.fovx = FOV
+        self.fovy = FOVY
         # Distance to near (projection) plane
         self.nearz = NEAR_Z
         # Distance to far plane
@@ -25,23 +27,30 @@ class Camera:
         # Right, Top, Far coordinates
         self.rtf = np.array([ NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
 
+
         # This is where [0,0,0] is in the canonical viewing space and thus the center of rotation
         self.center = self.z_scale(np.array([0,0,0,1]))
+        print(self.center)
         
         # The matrix that will be modified through transitions and rotations
         self.matrix = np.identity(4)
+        self.modelview_matrix = np.identity(4)
 
         # Initializing perspective projection matrix
         l,b,n = self.lbn
         r,t,f = self.rtf
         self.perspM = np.array([[2*n/(r-l),      0,          0,       -n*(r+l)/(r-l)],
                                 [    0,      2*n/(t-b),      0,       -n*(t+b)/(t-b)],
-                                [    0,          0,      (n+f)/(f-n),  2*(n*f)/(n-f)],
-                                [    0,          0,          1,              0      ]])
+                                [    0,          0,      -(n+f)/(n-f), 2*(n*f)/(n-f)],
+                                [    0,          0,          1,              0      ]], dtype='float32')
+        
+
+        self.projM = create_projection_matrix(self.lbn, self.rtf)
+        
 
         if r == -l and t == -b:
-            self.perspM[0][3] = 0
-            self.perspM[1][3] = 0
+            self.projM[0][2] = 0
+            self.projM[1][2] = 0
 
 
         # Movement stuff
@@ -52,8 +61,8 @@ class Camera:
 
     # Updates the camera position as if it was being moved
     def update_cam(self):
-        inv_matrix = np.linalg.inv(self.matrix)
-        self.trans_pos = inv_matrix @ self.pos
+        self.modelview_matrix = np.linalg.inv(self.matrix)
+        self.trans_pos = self.modelview_matrix @ self.pos
 
     def check_movement(self):
         # if want simultaneous movement change these all to ifs
@@ -80,10 +89,10 @@ class Camera:
     def transform_point(self, point) -> np.ndarray:
         return self.matrix @ point
     
-    # Projecting point onto projection plane
+    # Projecting a single point onto projection plane
     def perspective_projection(self, point: np.ndarray) -> np.ndarray:
-        persp_point = self.perspM @ point
-        return persp_point / (persp_point[3] if persp_point[3] != 0 else 1e-6)
+        persp_point = self.projM @ point
+        return persp_point / (persp_point[3] if persp_point[3] != 0 else 1)
 
     # Camera movement
     def move_cam(self, trans_vector: np.ndarray) -> None:
@@ -104,3 +113,19 @@ class Camera:
         y = -point[1]
         return np.array([x,y,z,point[3]])
 
+    ### VECTORIZED ###
+    # Projects a mesh onto the projection plane
+    def project_mesh(self, mesh:np.ndarray) -> np.ndarray:
+        projected_mesh = np.einsum('ij,nkj->nki', self.projM, mesh[:, :3, :])
+        colors = mesh[:,-1,:]
+        w = projected_mesh[:, :, 3]
+        
+        normalized = projected_mesh / np.where(w == 0, 1, w)[:, :, None]
+        return normalized, colors
+    
+    # Projects an array of points onto the projection plane
+    def project_points(self, points:np.ndarray) -> np.ndarray:
+        projected_points = points @ self.projM 
+        w = projected_points[:, 3]
+        normalized = projected_points / np.where(w == 0, 1, w)[:, None]
+        return normalized
