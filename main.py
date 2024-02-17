@@ -1,7 +1,6 @@
-import numpy as np
 import math
-import pygame as pg
 import cProfile,pstats
+import memory_profiler
 
 from quaternions import *
 from functions import *
@@ -10,7 +9,14 @@ from camera import *
 from Object import *
 
 
-def main(testing=False):
+"""def compile_functions() -> None:
+    signature = types.float64(types.float64[:], types.float64[:], types.float64[:])
+    signed_distance.compile(signature)
+    signature = types.float64(types.float64[:], types.float64[:], types.float64[:], types.float64[:])
+    line_plane_intersect.compile(signature)"""
+
+#@memory_profiler.profile
+def main(testing=True):
     pg.init()
     screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pg.time.Clock() 
@@ -20,6 +26,7 @@ def main(testing=False):
     object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
     held = False
+    #compile_functions()
 
     if testing:
         profiler = cProfile.Profile()
@@ -28,14 +35,15 @@ def main(testing=False):
             cam.rotate_cam(np.array([1,0,0]),angle)
             cam.move_cam([0,0,0.025,0])
             screen.fill("slate gray")
+
             object.draw()
             pg.display.flip()
 
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
         stats.print_stats(40)
-        print('NEWTIME', object.newtime)
-        print('OLDTIME', object.oldtime)
+        #print('NEWTIME', object.newtime)
+        #print('OLDTIME', object.oldtime)
     
     if not testing:
         while running:
@@ -57,10 +65,10 @@ def main(testing=False):
 
             pg.display.flip()
             clock.tick(60)
-            #print(clock)
+            print(clock)
 
 
 if __name__ == '__main__':
-    main(True)
+    main(False)
 pg.quit()
 

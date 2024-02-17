@@ -1,7 +1,3 @@
-import numpy as np
-import pygame as pg
-from collections import deque
-import time
 from functions import *
 from constants import *
 from camera import *
@@ -73,23 +69,19 @@ class Object:
     def prepare_mesh(self) -> list:
         #start = time.time()
         #transform_points = Transformed_List(self.points, self.cam)
-        #print('OLD', round(time.time() - start, 9), 's')
         #start = time.time()
         transform_points = (self.cam.matrix @ self.transposed_points).T
         #tp = (self.cam.matrix @ self.transposed_points).T
-        #print('NEW', round(time.time() - start, 9), 's')
 
         #start = time.time()
         #draw_points = Draw_Point_List(transform_points, self.cam)
         draw_points = vectorized_to_pygame2(self.cam.project_points(transform_points))
-        #print('OLD', round(time.time() - start, 9), 's')
 
         #start = time.time()
-        #print(tp.shape)
+
         #dp = self.cam.project_points(tp)
         
         #tpg = vectorized_to_pygame(dp)
-        #print('NEW', round(time.time() - start, 9), 's')
 
         #transform_points = [self.cam.transform_point(point) for point in self.points]
         #draw_points = [to_pygame(self.cam.perspective_projection(point)) for point in transform_points]
@@ -118,7 +110,6 @@ class Object:
        
         # Calls to functions that clip the mesh and z-order it
         todraw = zordermesh(todraw)
-        #print(todraw)
         todraw = self.clip_mesh(todraw)
         return todraw
 
@@ -130,31 +121,19 @@ class Object:
             # Draws Polygons
             pg.draw.polygon(self.screen,(255*color,255*color,255*color), polygon, width = 0)
             # Draws edges on triangles
-            pg.draw.polygon(self.screen, (20,20,20), polygon, width = 1)
-        end = time.time() - start"""
-        #print('OLD', round(end, 5), 's')
-        #self.oldtime += end
-        #print('OLD', len(np.array(draw_mesh, dtype = object)))
+            pg.draw.polygon(self.screen, (20,20,20), polygon, width = 1)"""
 
         vec_mesh = self.prepare_mesh_vectorized()
-        #print(vec_mesh.shape)
-        #print(vec_mesh[0][0])
         proj_mesh, colors = self.cam.project_mesh(vec_mesh)
-        #print(proj_mesh[0][0])
         pg_mesh = vectorized_to_pygame(proj_mesh)
 
         for i in range(len(proj_mesh)):
             color = colors[i][0]
             pg.draw.polygon(self.screen,(255*color,255*color,255*color), pg_mesh[i], width = 0)
             pg.draw.polygon(self.screen, (255,255,255), pg_mesh[i], width = 1)
-        #print('NEW', round(end, 5), 's')
-        #self.newtime += end
-        #print('NEW', len(vec_mesh))
-        #print(len(vec_mesh)-len(draw_mesh))
-        #print()
         
     ### VECTORIZED ###
-    def backface_culling(self):
+    def _backface_culling(self):
         """center_mesh = np.array([[np.array([0,0,0,1]), np.array([0,0,0,1]), np.array([0,0,0,1]), np.array([1,1,1,1])]])
         transformed_mesh = np.zeros((center_mesh.shape[0], 4, 4))
         for i in range(center_mesh.shape[0]):
@@ -166,39 +145,41 @@ class Object:
         center = np.array([np.array([0,0,0,1]), np.array([0,0,0,1]), np.array([0,0,0,1]), np.array([1,1,1,1])])
         tcenter = (self.cam.matrix @ center.T).T[0]
         pcenter = self.cam.perspective_projection(tcenter)
-        vpcenter, c = self.cam.project_mesh(transformed_mesh)
-        print(pcenter)
-        print(vpcenter[0][0])
-        print()"""
+        vpcenter, c = self.cam.project_mesh(transformed_mesh)"""
         
-        transformpoints = (self.cam.matrix @ self.transposed_points).T
+        #transformpoints = ((self.cam.matrix @ self.transposed_points).T)
+
+        
+
         #tp = self.cam.matrix @ self.transposed_points
         #transformpoints = tp.T
-        
         #projectedpoints = (self.cam.perspM @ tp).T
         #projected_polygons = projectedpoints[self.polygon_indices]
-        polygons = transformpoints[self.polygon_indices]
-
         #transformnormals = (self.cam.matrix @ self.transposed_normals).T
         
         in_sight = ((self.points[self.polygon_indices[:, 1]] - self.cam.trans_pos) * self.normals).sum(axis=1) < 0
         #in_sight = (transformnormals * polygons[:, 1]).sum(axis=1) < 0
-
-        visible_polygons = polygons[in_sight]
+        
+        #polygons = transformpoints[self.polygon_indices]
+        #visible_polygons = polygons[in_sight]
+        
+        visible_polygons = ((self.cam.matrix @ self.transposed_points).T)[self.polygon_indices][in_sight]
 
         color_and_polygons = np.zeros((visible_polygons.shape[0], visible_polygons.shape[1] + 1, visible_polygons.shape[2]))
         color_and_polygons[:,:-1,:] = visible_polygons
-        
         norm_color_dots = np.abs(np.dot(self.normals[in_sight], self.cam.lightdir))
+
+
         #norm_color_dots = np.dot(transformnormals[in_sight], self.cam.lightdir) / 2
         
         #color_vals = norm_color_dots ** 2
         #color_vals = np.where(norm_color_dots < 0, -norm_color_dots, norm_color_dots)
         
         color_and_polygons[:, -1, :] = norm_color_dots[:, None]
+        #color_and_polygons[:, -1, :] = np.abs(np.dot(self.normals[in_sight], self.cam.lightdir))[:, None]
         return color_and_polygons
 
-    def clip_mesh_vectorized(self, mesh: np.ndarray) -> np.ndarray:
+    def _clip_mesh_vectorized(self, mesh: np.ndarray) -> np.ndarray:
         triangle_queue = deque(mesh) 
         for plane in self.cam.clipping_planes:
             for _ in range(len(triangle_queue)):
@@ -221,20 +202,12 @@ class Object:
         """
         self.cam.update_cam()
         #culled_polygons, projected_polygons = self.backface_culling()
-        culled_polygons = self.backface_culling()
-
+        culled_polygons = self._backface_culling()
         #reorder = vectorized_zordermesh2(culled_polygons[:,:-1,:])
         #projected_polygons = projected_polygons[reorder]
-
         #todraw = self.clip_mesh_vectorized2(projected_polygons)
-
-        #print(len(todraw))
-
         todraw = vectorized_zordermesh(culled_polygons)
-        todraw = self.clip_mesh_vectorized(todraw)
-        #print(len(todraw))
-        #print()
-
+        todraw = self._clip_mesh_vectorized(todraw)
         return todraw
     
     """def prepare_mesh_vectorized2(self) -> np.ndarray:
@@ -257,9 +230,6 @@ class Object:
         color_vals = np.where(norm_color_dots < 0, -norm_color_dots, norm_color_dots)[z_order_indices]
 
         todraw = self.clip_mesh(np.array([visible_polygons, projected_polygons, color_vals]))
-
-
-        #print('NEW', todraw)
         #todraw = self.clip_mesh(todraw)
         return todraw
     
@@ -285,21 +255,15 @@ class Object:
 
 
 
-
-
-
-
-
     
     
 # Performs transformations on all points
 class Transformed_List(list):
-
-    def __new__(cls, points, camera):
+    def __new__(cls, points, camera: Camera):
         return [camera.transform_point(point) for point in points]
 
 # Projects points and converts them to pygame coordinates
 class Draw_Point_List(list):
-    def __new__(cls, points, camera):
+    def __new__(cls, points, camera: Camera):
         return [to_pygame(camera.perspective_projection(point)) for point in points]
 

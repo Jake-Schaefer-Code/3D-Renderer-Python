@@ -1,9 +1,14 @@
-import numpy as np
-import random
 from constants import *
 
-def signed_distance(plane_normal: np.ndarray, vertex: np.ndarray, plane_point: list=[0,0,0,0]) -> float:
-    return plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2])
+DISTANCE:float = 0.0
+
+
+#@numba.njit
+def signed_distance(plane_normal:np.ndarray, vertex:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
+    #DISTANCE = (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
+    return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
+
+
 
 def linear_interpolation(p1, p2, dist):
     p1x,p1y,p1z,p1w = p1 
@@ -15,20 +20,24 @@ def linear_interpolation(p1, p2, dist):
 
     return np.array([newx, newy, newz, 1])
 
-
-def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarray, plane_point: np.ndarray=np.array([0,0,0,0])) -> np.ndarray:
+#@numba.njit
+def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarray, plane_point: np.ndarray) -> np.ndarray:
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
     # Normal values
     nx, ny, nz, nw = plane_normal
     slopex, slopey, slopez = p1x-p2x,p1y-p2y,p1z-p2z
     mag = ((slopex**2) + (slopey**2) + (slopez**2)) ** 0.5
-    if mag == 0: mag = 1e-6
+    if mag == 0: mag = 1
     ux, uy, uz = slopex/mag, slopey/mag, slopez/mag
     dot = ux * nx + uy * ny + uz * nz
-    if dot == 0: dot = 1e-6
+    if dot == 0: dot = 1
     d = ((plane_point[0] - p2x) * nx + (plane_point[1] - p2y) * ny + (plane_point[2] - p2z) * nz) / dot
-    return np.array([p2x + ux * d, p2y + uy * d, p2z + uz * d,1])
+    x = p2x + ux * d
+    y = p2y + uy * d
+    z = p2z + uz * d
+
+    return np.array([x, y, z, 1.0])
 
 def get_face_normal(face):
     # Note: this is if the vertices are in clockwise order. If they are not, then the cross product should be the other way
@@ -43,9 +52,6 @@ def get_face_normal(face):
     if norm != 0:
         normal = [nx/norm, ny/norm, nz/norm, 0]
     return normal
-
-def to_pygame(point: list) -> list:
-    return [(point[0] * HALFWIDTH) + HALFWIDTH, (point[1] * HALFHEIGHT) + HALFHEIGHT]
 
 def zordermesh(mesh: list) -> list:
     mesh_size = len(mesh)
@@ -117,12 +123,13 @@ def vectorized_zordermesh(mesh: np.ndarray) -> np.ndarray:
     reordered_indices = np.argsort(zmeans)[::-1]
     return mesh[reordered_indices]
 
-def vectorized_zordermesh2(mesh: np.ndarray) -> np.ndarray:
+def vectorized_zordermesh_no_colors(mesh: np.ndarray) -> np.ndarray:
     if mesh.size == 0:
         return mesh
     zmeans = np.mean(mesh[:, :, 2], axis=1)
     reordered_indices = np.argsort(zmeans)[::-1]
     return reordered_indices
+
 
 
 def new_clip(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
@@ -222,7 +229,6 @@ def vectorized_clip_triangle2(triangle: np.ndarray, plane: np.ndarray, plane_poi
     
     else: return []
 
-
 def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
     in_bounds = [None,None,None]
     num_out = 0
@@ -230,9 +236,7 @@ def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_poin
     # Checking each vertex in the triangle
     for i in range(3):
         vertex = vertices[i]
-        #print(vertex, signed_distance(plane, vertex, plane_point))
         if signed_distance(plane, vertex, plane_point) < 0: 
-            #print(vertex, signed_distance(plane, vertex, plane_point))
             num_out += 1
         
         else: in_bounds[i] = vertex
@@ -267,6 +271,11 @@ def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_poin
         return [triangle]
     
     else: return []
+
+
+
+def to_pygame(point: list) -> list:
+    return [(point[0] * HALFWIDTH) + HALFWIDTH, (point[1] * HALFHEIGHT) + HALFHEIGHT]
 
 def vectorized_to_pygame(mesh):
     transform = np.array([HALFWIDTH, HALFHEIGHT])

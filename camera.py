@@ -1,7 +1,3 @@
-import numpy as np
-import pygame as pg
-import time
-
 from quaternions import *
 from functions import *
 from constants import *
@@ -30,7 +26,6 @@ class Camera:
 
         # This is where [0,0,0] is in the canonical viewing space and thus the center of rotation
         self.center = self.z_scale(np.array([0,0,0,1]))
-        print(self.center)
         
         # The matrix that will be modified through transitions and rotations
         self.matrix = np.identity(4)
@@ -58,7 +53,7 @@ class Camera:
         self.move_z = np.array([0,0,self.rate,0])
         self.move_y = np.array([0,self.rate,0,0])
         self.move_x = np.array([self.rate,0,0,0])
-
+    
     # Updates the camera position as if it was being moved
     def update_cam(self):
         self.modelview_matrix = np.linalg.inv(self.matrix)
@@ -82,12 +77,16 @@ class Camera:
         if keys[pg.K_SPACE]:
             self.move_cam(-self.move_y/fps)
         elif keys[pg.K_LSHIFT]:
-            self.move_cam(self.move_y/fps)
+            self.move_cam(-self.move_y/fps)
 
 
-    # Applying transformation matrix
-    def transform_point(self, point) -> np.ndarray:
+    # Applying transformation matrix on a single point
+    def transform_point(self, point:np.ndarray) -> np.ndarray:
         return self.matrix @ point
+    
+    # Applying transformation matrix over an array
+    def transform_point_array(self, transposed_points:np.ndarray) -> np.ndarray:
+        return (self.matrix @ transposed_points).T
     
     # Projecting a single point onto projection plane
     def perspective_projection(self, point: np.ndarray) -> np.ndarray:

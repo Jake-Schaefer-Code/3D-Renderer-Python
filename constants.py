@@ -1,6 +1,7 @@
 import math
 import numpy as np
-import time
+import pygame as pg
+from collections import deque
 from matrices import *
 """Constants for 3D Renderer"""
 
@@ -32,24 +33,18 @@ FX = (1/math.tan(FOVY/2))/ASPECT_RATIO
 
 NEAR_PLANE_HEIGHT = 2 * math.tan(FOVY/2) * NEAR_Z
 NEAR_PLANE_WIDTH = 2 * math.tan(FOVY/2) * NEAR_Z * ASPECT_RATIO
-
-print(NEAR_PLANE_WIDTH, NEAR_PLANE_HEIGHT)
-
 FOVX = math.atan((NEAR_PLANE_WIDTH/2)/NEAR_Z)*2
-print(FOVX, FOVY)
-print(ASPECT_RATIO)
+
+
 
 # define coordinate origin to be in center of the screen, input point is in this form
 SCREEN_ORIGIN = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,0,1])
 SCREEN_SCALE = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,1,0])
 
 
-projM = create_projection_matrix([-NEAR_PLANE_WIDTH/2, -NEAR_PLANE_HEIGHT/2, NEAR_Z],[NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
+"""projM = create_projection_matrix([-NEAR_PLANE_WIDTH/2, -NEAR_PLANE_HEIGHT/2, NEAR_Z],[NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
 pn = projM @ np.array([-0.19101796, 0, 0.2,1])
-print(pn/pn[3])
-
-pf = projM @ np.array([0,0,FAR_Z,1])
-print(pf/pf[3])
+print(pn/pn[3])"""
 
 
 PLANES = np.array([np.array([-NEAR_Z, 0, NEAR_PLANE_WIDTH/2, 0]) , # right
@@ -78,19 +73,3 @@ PLANE_POINTS = NEAR_Z * np.array([np.array([0, 0, 0, 0]), # right
 BACKGROUND_COLOR = (80,85,90)
 SPEED = 0.025
 MAX_FPS = 60
-"""
-TRANSLATION_MATRIX = np.identity(4)
-
-trans_vect = np.array([1,1,1,1])
-
-start = time.time()
-TRANSLATION_MATRIX[:,3] = trans_vect
-print(time.time() - start)
-
-start = time.time()
-TRANSLATION_MATRIX[0][3] = trans_vect[0]
-TRANSLATION_MATRIX[1][3] = trans_vect[1]
-TRANSLATION_MATRIX[2][3] = trans_vect[2]
-print(time.time() - start)
-
-"""
