@@ -45,14 +45,10 @@ PYGAME_WINDOW_ORIGIN = np.array([HALFWIDTH, HALFHEIGHT])
                    np.array([0, NEAR_Z, NEAR_PLANE_HEIGHT/2, 0])]) # top"""
 
 PLANES = np.empty((4,4))
-PLANES[0] = np.array([-math.cos(FOVX/2), 0, math.sin(FOVX/2), 0])
-PLANES[1] = np.array([math.cos(FOVX/2), 0, math.sin(FOVX/2), 0])
-PLANES[2] = np.array([0, -math.cos(FOVY/2), math.sin(FOVY/2), 0]) 
-PLANES[3] =  np.array([0, math.cos(FOVY/2), math.sin(FOVY/2), 0])
-"""PLANES = np.array([np.array([-math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]) , # right
-                   np.array([math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]) ,  # left
-                   np.array([0, -math.cos(FOVY/2), math.sin(FOVY/2), 0]) , # bottom
-                   np.array([0, math.cos(FOVY/2), math.sin(FOVY/2), 0])]) # top"""
+PLANES[0] = np.array([-math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]) # right
+PLANES[1] = np.array([math.cos(FOVX/2),  0, math.sin(FOVX/2), 0]) # left
+PLANES[2] = np.array([0, -math.cos(FOVY/2), math.sin(FOVY/2), 0]) # bottom
+PLANES[3] = np.array([0, math.cos(FOVY/2),  math.sin(FOVY/2), 0]) # top
 
 # Normalizing plane normal vectors
 #PLANE_NORMALS = np.array([plane/math.sqrt(plane[0]**2 + plane[1]**2 + plane[2]**2) for plane in PLANES])
