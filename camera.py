@@ -4,11 +4,12 @@ from constants import *
 from matrices import *
 
 class Camera:
-    def __init__(self, clock):
+    def __init__(self):
         self.pos = np.array([0,0,0,1])
         self.trans_pos = np.array([0,0,0,1])
         self.lightdir = np.array([0,0,-1,0])
-        self.clock = clock
+        self.trans_lightdir = np.array([0,0,-1,0])
+        self.clock = pg.time.Clock() 
         # Clipping planes (only sides, no near and far planes)
         self.clipping_planes = PLANE_NORMALS
         # FOV
@@ -58,6 +59,7 @@ class Camera:
     def update_cam(self):
         self.modelview_matrix = np.linalg.inv(self.matrix)
         self.trans_pos = self.modelview_matrix @ self.pos
+        self.trans_lightdir = self.modelview_matrix @ self.lightdir
 
     def check_movement(self):
         # if want simultaneous movement change these all to ifs
@@ -75,7 +77,7 @@ class Camera:
         elif keys[pg.K_a]:
             self.move_cam(-self.move_x/fps)
         if keys[pg.K_SPACE]:
-            self.move_cam(-self.move_y/fps)
+            self.move_cam(self.move_y/fps)
         elif keys[pg.K_LSHIFT]:
             self.move_cam(-self.move_y/fps)
 
@@ -95,7 +97,7 @@ class Camera:
 
     # Camera movement
     def move_cam(self, trans_vector: np.ndarray) -> None:
-        self.matrix = translate(self.matrix, trans_vector)
+        self.matrix = translate_matrix(self.matrix, trans_vector)
 
     # Camera Rotation
     def rotate_cam(self, axis: np.ndarray, angle: float) -> None:
@@ -128,3 +130,4 @@ class Camera:
         w = projected_points[:, 3]
         normalized = projected_points / np.where(w == 0, 1, w)[:, None]
         return normalized
+
