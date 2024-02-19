@@ -4,7 +4,7 @@ from camera import *
 from objreader import *
 
 class Object:
-    def __init__(self, camera: Camera, screen: pg.display, filename: str, position: np.ndarray, tofrust: bool = True):
+    def __init__(self, camera: Camera, screen: pg.display, fileName: str, position: np.ndarray, tofrust: bool = True):
         """
         What this does...
 
@@ -24,16 +24,17 @@ class Object:
         self.cam = camera
         self.screen = screen
         self.position = position
-        self.filename = filename
+        self.fileName = fileName
+        self.objFile = OBJFile(f'{os.path.dirname(__file__)}/obj_files/{fileName}')
         self.generate_from_obj(tofrust)
+        self._generate_face_normals()
 
         self.planes = PLANE_NORMALS
         self.plane_points = PLANE_POINTS
-        self._generate_face_normals()
-        self.oldtime = 0
-        self.newtime = 0
 
-    def generate_from_obj(self, tofrust: bool):
+        
+
+    def generate_from_obj(self, tofrust: bool) -> None:
         """
         What this does...
 
@@ -41,18 +42,19 @@ class Object:
         ----------------
         tofrust : bool
         """
-        points, normals, component_array = read_obj(f'obj_files/{self.filename}')
-        #polygon_vertex_indices, points, normals, faces, component_array = read_obj(f'obj_files/{self.filename} ')
-        self.component_array = component_array
-        self.maxval = np.max(np.abs(points))
-        self.polygon_indices = component_array['v']
-        self.points = to_frustum(points, self.maxval, self.cam.center) if tofrust else points
-        #self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
-        self.points = np.array([p+self.position for p in self.points], dtype='float32')
+        self.objFile.read_obj()
+        
+        points = self.objFile.vertices
+        self.points = to_frustum(points + self.position, self.objFile.maxval, self.cam.center) if tofrust else points + self.position
         self.transposed_points = self.points.T
         self.numpoints = len(points)
-        self.numfaces = len(component_array['v'])
-        self.normals = np.array(normals) if normals != [] else np.zeros((self.numfaces, 4))
+
+        self.normals = self.objFile.normals
+
+        self.component_array = self.objFile.component_array
+        self.polygon_indices = self.component_array['v']
+        self.numfaces = len(self.component_array['v'])
+
         
     def _generate_face_normals(self) -> None:
         """
@@ -84,60 +86,6 @@ class Object:
         self.normals = np.array(normals, dtype='float32')
         self.transposed_normals = self.normals.T
         """
-
-    def prepare_mesh(self) -> list:
-        """
-        What this does...
-
-        Returns:
-        ----------------
-        list
-        """
-        #start = time.time()
-        #transform_points = Transformed_List(self.points, self.cam)
-        #start = time.time()
-        transform_points = (self.cam.matrix @ self.transposed_points).T
-        #tp = (self.cam.matrix @ self.transposed_points).T
-
-        #start = time.time()
-        #draw_points = Draw_Point_List(transform_points, self.cam)
-        draw_points = to_pygame(self.cam.perspective_projection(transform_points))
-
-        #start = time.time()
-
-        #dp = self.cam.perspective_projection(tp)
-        
-        #tpg = to_pygame(dp)
-
-        #transform_points = [self.cam.transform_point(point) for point in self.points]
-        #draw_points = [to_pygame(self.cam.perspective_projection(point)) for point in transform_points]
-        self.cam.update_cam()
-
-        todraw = []
-        for face_values in self.faces:
-            vertex_indices = face_values['v']
-            normal = face_values['vn']
-            nx = normal[0]
-            ny = normal[1]
-            nz = normal[2]
-
-            plane_point = self.points[vertex_indices[1]]
-            cam_pos = self.cam.trans_pos
-            # Back-face culling: only draw if face is facing camera i.e. if normal is facing in negative direction
-            # This is the normal dotted with the view vector pointing from the polygon's surface to the camera's position
-            coincide = ((plane_point[0] - cam_pos[0]) * nx + (plane_point[1] - cam_pos[1]) * ny + (plane_point[2] - cam_pos[2]) * nz)
-            if coincide < 0:
-                lightdir = self.cam.lightdir
-                norm_color_dot = (nx * lightdir[0] + ny * lightdir[1] + nz * lightdir[2])
-                # Setting the last index of the face to the colorval
-                face = [[transform_points[j] for j in vertex_indices], [draw_points[j] for j in vertex_indices]] + [-norm_color_dot if norm_color_dot < 0 else norm_color_dot]
-                todraw.append(face)
-        
-       
-        # Calls to functions that clip the mesh and z-order it
-        todraw = zordermesh(todraw)
-        #todraw = self.clip_mesh(todraw)
-        return todraw
 
     def draw(self) -> None:
         """
@@ -199,7 +147,7 @@ class Object:
         #color_and_polygons[:, -1, :] = np.abs(np.dot(self.normals[in_sight], self.cam.lightdir))[:, None]
         return color_and_polygons
 
-    def _clip_mesh_vectorized(self, mesh: np.ndarray) -> np.ndarray:
+    def _clip_mesh(self, mesh: np.ndarray) -> np.ndarray:
         """
         What this does...
 
@@ -237,7 +185,7 @@ class Object:
         self.cam.update_cam()
         culled_polygons = self._backface_culling()
         todraw = zordermesh(culled_polygons)
-        todraw = self._clip_mesh_vectorized(todraw)
+        todraw = self._clip_mesh(todraw)
         return todraw
     
 
