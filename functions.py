@@ -1,16 +1,12 @@
 from constants import *
 
-DISTANCE:float = 0.0
 
 
-#@numba.njit
 def signed_distance(plane_normal:np.ndarray, vertex:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
     #DISTANCE = (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
     return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
 
-
-
-def linear_interpolation(p1, p2, dist):
+def linear_interpolation(p1: np.ndarray, p2: np.ndarray, dist: float) -> np.ndarray:
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
     #denom = ((p1x-p2x)**2+(p1y-p1y)**2+(p1z-p2z)**2)**0.5
@@ -20,7 +16,6 @@ def linear_interpolation(p1, p2, dist):
 
     return np.array([newx, newy, newz, 1])
 
-#@numba.njit
 def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarray, plane_point: np.ndarray) -> np.ndarray:
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
@@ -39,7 +34,7 @@ def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarra
 
     return np.array([x, y, z, 1.0])
 
-def get_face_normal(face):
+def get_face_normal(face: np.ndarray) -> np.ndarray:
     # Note: this is if the vertices are in clockwise order. If they are not, then the cross product should be the other way
     x1, y1, z1, w1 = (face[2] - face[0])
     x2, y2, z2, w2 = (face[1] - face[0])
@@ -114,7 +109,6 @@ def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: list = [
     
     else: return []
 
-
 ### VECTORIZED ###
 def vectorized_zordermesh(mesh: np.ndarray) -> np.ndarray:
     if mesh.size == 0:
@@ -129,8 +123,6 @@ def vectorized_zordermesh_no_colors(mesh: np.ndarray) -> np.ndarray:
     zmeans = np.mean(mesh[:, :, 2], axis=1)
     reordered_indices = np.argsort(zmeans)[::-1]
     return reordered_indices
-
-
 
 def new_clip(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
     #previous_distance = signed_distance(plane, triangle[0], plane_point)
@@ -272,19 +264,111 @@ def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_poin
     
     else: return []
 
-
-
 def to_pygame(point: list) -> list:
-    return [(point[0] * HALFWIDTH) + HALFWIDTH, (point[1] * HALFHEIGHT) + HALFHEIGHT]
+    return [(point[0] * HALFWIDTH) + HALFWIDTH, (point[1] * -HALFHEIGHT) + HALFHEIGHT]
 
-def vectorized_to_pygame(mesh):
-    transform = np.array([HALFWIDTH, HALFHEIGHT])
-    return (mesh[:,:,:2] * transform) + transform
+def vectorized_to_pygame(mesh: np.ndarray) -> np.ndarray:
+    return (mesh[:,:,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
 
-def vectorized_to_pygame2(points):
-    transform = np.array([HALFWIDTH, HALFHEIGHT])
-    return (points[:,:2] * transform) + transform
+def vectorized_to_pygame2(points: np.ndarray) -> np.ndarray:
+    return (points[:,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
 
 
-#print(NEAR_PLANE_WIDTH/2)
-#print(signed_distance(np.array([-math.cos(FOVX/2), 0, math.sin(FOVX/2), 0]), np.array([NEAR_PLANE_WIDTH/2, 0, NEAR_Z, 0])))
+def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
+    ortho_mesh = np.array([ortho_project_polygon(polygon) for polygon in mesh])
+    return
+
+def ortho_project_polygon(polygon: np.ndarray) -> np.ndarray:
+    n = polygon.shape[0]
+    normal = get_face_normal(polygon)
+    basisU = polygon[1] - polygon[0]
+    basisU /= np.linalg.norm(basisU)
+    basisV = np.cross(normal, basisU)
+    
+    projected_points = np.zeros((n, 2))
+    for i in range(n):
+        p_prime = polygon[i] - polygon[0]
+        x = np.dot(p_prime, basisU)
+        y = np.dot(p_prime, basisV)
+        projected_points[i] = (x,y)
+    return projected_points
+
+def angle_between_points(p1:np.ndarray, p2:np.ndarray, p3:np.ndarray) -> float:
+    """Returns angle between points in radians"""
+    v1 = p1 - p2
+    v2 = p3 - p2
+    dot = np.dot(v1, v2)
+    print(dot)
+    magv1 = np.linalg.norm(v1)
+    magv2 = np.linalg.norm(v2)
+    return np.arccos(dot/(magv1 * magv2))
+
+def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
+    dot = np.dot(v1, v2)
+    magv1 = np.linalg.norm(v1)
+    magv2 = np.linalg.norm(v2)
+    return np.arccos(dot/(magv1 * magv2))
+
+def ear_triangulate(polygon: np.ndarray) -> np.ndarray:
+    """
+    This triangulates a 2D polygon using the ear method
+
+    Parameters:
+    ----------------
+    polygon : np.ndarray
+        An array of points in 2D coordinates
+
+    ----------------
+    Returns:
+    ----------------
+    """
+    triangles = []
+    n = len(polygon)
+    prev = polygon[-1]
+    cur = polygon[0]
+
+    i = 0
+    count = 0
+    while n > 0:
+        nextitem = polygon[(i+1)%n]
+        v1 = prev - cur
+        v2 = nextitem - cur
+        cross_product = v1[0] * v2[1] - v1[1] * v2[0]
+        if cross_product < 0:
+            return
+        angle = angle_between_vectors(v1, v2)
+        if angle == math.pi:
+            return
+        
+
+
+        prev = cur
+        cur = nextitem
+
+    return
+
+
+p1 = np.array([1,0])
+p2 = np.array([0,0])
+p3 = np.array([0,-1])
+
+v1 = p1 - p2
+v2 = p3 - p2
+cross_product = v1[0] * v2[1] - v1[1] * v2[0]
+#print(angle_between_vectors(v1, v2), cross_product)
+
+
+class Triangulate3D:
+    def __init__(self) -> None:
+        pass
+
+    def sphere(self):
+        pass
+
+    def ellipsoid(self):
+        pass
+
+    def mesh(self, mesh: np.ndarray) -> np.ndarray:
+        pass
+
+
