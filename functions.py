@@ -151,9 +151,6 @@ def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
     return np.arccos(dot/(magv1 * magv2))
 
 
-
-
-### VECTORIZED ###
 def zordermesh(mesh: np.ndarray) -> np.ndarray:
     """
     Orders a mesh by the z-coordinates of its points
@@ -349,7 +346,7 @@ def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarr
     else: return []
 
 
-# Converts last dimension in array to pygame screen coordinates
+
 def to_pygame(array: np.ndarray) -> np.ndarray:
     """
     Takes an array of any dimension (ndim > 1) and converts its last dimension values to pygame coordinates
@@ -365,8 +362,23 @@ def to_pygame(array: np.ndarray) -> np.ndarray:
     """
     return (array[...,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
 
-# converts to frustum coordinates
-def to_frustum_vectorized(points: np.ndarray, maxval:float, shift:np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
+def to_frustum(points: np.ndarray, maxval:float, shift:np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
+    """
+    Takes a vector of dimension 1 or 2 and converts its points to frustum coordinates
+
+    Parameters:
+    ----------------
+    points : np.ndarray
+        The points to convert
+    maxval : float
+        Maximum value of the array to normalize the points by
+    shift : np.ndarray
+        Vector to shift the points by
+    ----------------
+    Returns:
+    ----------------
+    Viewing Frustum Coordinates
+    """
     if points.ndim == 1:
         z = NEAR_Z * ((points[2])/maxval) + shift[2]
         x = NEAR_Z * ((points[0])/maxval)
@@ -377,11 +389,18 @@ def to_frustum_vectorized(points: np.ndarray, maxval:float, shift:np.ndarray = n
         points[:,:3] += shift[:3]
         return points
 
-def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
-    ortho_mesh = np.array([ortho_project_polygon(polygon) for polygon in mesh])
-    return
-
 def ortho_project_polygon(polygon: np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    polygon : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     n = polygon.shape[0]
     normal = get_face_normal_vectorized(polygon)
     basisU = polygon[1] - polygon[0]
@@ -395,6 +414,23 @@ def ortho_project_polygon(polygon: np.ndarray) -> np.ndarray:
         y = np.dot(p_prime, basisV)
         projected_points[i] = (x,y)
     return projected_points
+
+
+
+def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    mesh : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
+    ortho_mesh = np.array([ortho_project_polygon(polygon) for polygon in mesh])
+    return
 
 def ear_triangulate(polygon: np.ndarray) -> np.ndarray:
     """
