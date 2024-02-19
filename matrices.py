@@ -34,7 +34,7 @@ def create_projection_matrix(lbn:np.ndarray, rtf:np.ndarray) -> np.ndarray:
     return projM
 
 TRANSLATION_MATRIX = np.identity(4)
-def translate(matrix: np.ndarray, trans_vector: np.ndarray) -> np.ndarray:
+def translate_matrix(matrix: np.ndarray, trans_vector: np.ndarray) -> np.ndarray:
     TRANSLATION_MATRIX[0][3] = -trans_vector[0]
     TRANSLATION_MATRIX[1][3] = -trans_vector[1]
     TRANSLATION_MATRIX[2][3] = -trans_vector[2]
