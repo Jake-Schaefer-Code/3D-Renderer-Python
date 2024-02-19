@@ -61,21 +61,6 @@ class Object:
         self.transposed_normals = self.normals.T
         """
 
-    
-
-
-    def clip_mesh(self, mesh: list[list]) -> np.ndarray:
-        triangle_queue = deque(mesh) 
-        for plane in self.planes:
-            for _ in range(len(triangle_queue)):
-                polygon = triangle_queue.popleft()
-                if len(polygon[0]) == 3: # Is triangle: 3 vertices and color
-                    new_triangles = clip_triangle(polygon, plane)
-                    triangle_queue.extend(new_triangles)
-                else:
-                    triangle_queue.append(polygon)
-        return list(triangle_queue)
-
     def prepare_mesh(self) -> list:
         #start = time.time()
         #transform_points = Transformed_List(self.points, self.cam)
@@ -120,7 +105,7 @@ class Object:
        
         # Calls to functions that clip the mesh and z-order it
         todraw = zordermesh(todraw)
-        todraw = self.clip_mesh(todraw)
+        #todraw = self.clip_mesh(todraw)
         return todraw
 
     def draw(self) -> None:
@@ -142,7 +127,6 @@ class Object:
             pg.draw.polygon(self.screen,(255*color,255*color,255*color), pg_mesh[i], width = 0)
             pg.draw.polygon(self.screen, (255,255,255), pg_mesh[i], width = 1)
         
-    ### VECTORIZED ###
     def _backface_culling(self) -> np.ndarray:
         #transformpoints = ((self.cam.matrix @ self.transposed_points).T)
 
@@ -181,7 +165,7 @@ class Object:
             new_clipped_polygons = []
             for polygon in mesh:
                 #if len(polygon) == 4: # Is triangle: 3 vertices and color
-                new_triangles = vectorized_clip_triangle(polygon, plane)
+                new_triangles = clip_triangle(polygon, plane)
                 new_clipped_polygons.extend(new_triangles)
             mesh = np.array(new_clipped_polygons)
         if len(mesh) == 0:
@@ -190,59 +174,14 @@ class Object:
             return mesh
         
     def prepare_mesh_vectorized(self) -> np.ndarray:
-        """
-        Internal Function
-        """
         self.cam.update_cam()
         culled_polygons = self._backface_culling()
-        todraw = vectorized_zordermesh(culled_polygons)
+        todraw = zordermesh(culled_polygons)
         todraw = self._clip_mesh_vectorized(todraw)
         return todraw
     
-    """def prepare_mesh_vectorized2(self) -> np.ndarray:
-        '''
-        Internal Function
-        '''
-
-        transform_points = (self.cam.matrix @ self.transposed_points).T
-        projected_points = self.cam.project_points(transform_points)
-        draw_points = vectorized_to_pygame(projected_points)
-        self.cam.update_cam()
-        in_sight = ((self.points[self.polygon_indices[:, 1]] - self.cam.trans_pos) * self.normals).sum(axis=1) < 0
-        visible_polygons = transform_points[self.polygon_indices]
-        projected_polygons = draw_points[self.polygon_indices]
-        norm_color_dots = np.dot(self.normals[in_sight], self.cam.lightdir)
-
-        z_order_indices = vectorized_zordermesh2()
-        visible_polygons = visible_polygons[z_order_indices]
-        projected_polygons = projected_polygons[z_order_indices]
-        color_vals = np.where(norm_color_dots < 0, -norm_color_dots, norm_color_dots)[z_order_indices]
-
-        todraw = self.clip_mesh(np.array([visible_polygons, projected_polygons, color_vals]))
-        #todraw = self.clip_mesh(todraw)
-        return todraw
-    
-    def clip_mesh_vectorized2(self, mesh: np.ndarray) -> np.ndarray:
-        triangle_queue = deque(mesh)
-        for i in range(len(self.planes)):
-            plane = PROJECTED_PLANES[i]
-            plane_point = PROJECTED_PLANE_POINTS[i]
-            for _ in range(len(triangle_queue)):
-                polygon = triangle_queue.popleft()
-                if len(polygon) == 3: # Is triangle: 3 vertices and color
-                    new_triangles = vectorized_clip_triangle2(polygon, plane, plane_point)
-
-                    triangle_queue.extend(new_triangles)
-                else:
-                    triangle_queue.append(polygon)
-
-        if len(list(triangle_queue)) == 0:
-            return np.zeros((1, mesh.shape[1], mesh.shape[2]))
-        else:
-            return np.array(list(triangle_queue))"""
 
 
-   
 # Performs transformations on all points
 class Transformed_List(list):
     def __new__(cls, points, camera: Camera):
