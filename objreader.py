@@ -82,7 +82,7 @@ def read_obj(fileName: str):
 
                 #mesh.append(np.array([vertices[index-1] for index in face]))
 
-                vertex_indices.append(face)
+                vertex_indices.append(face[:3])
                 texture_indices.append(texture_coords)
                 normal_indices.append(normal_coords)
                 indices.append(coord_dict)
