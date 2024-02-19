@@ -21,7 +21,7 @@ def main(testing=True):
     screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pg.time.Clock() 
     running = True
-    cam = Camera(clock)
+    cam = Camera()
     position = np.array([0,0,0,0])
     object = Object(cam, screen, 'side_prop_housings.obj', position)
     angle=math.pi/180
@@ -41,7 +41,7 @@ def main(testing=True):
 
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats(40)
+        stats.print_stats(50)
         #print('NEWTIME', object.newtime)
         #print('OLDTIME', object.oldtime)
     
@@ -55,7 +55,7 @@ def main(testing=True):
                 if event.type == pg.MOUSEMOTION and held:
                     dx, dy = event.rel
                     # Rotate about y axis when mouse moves L->R and x-axis when mouse moves UP->DOWN
-                    cam.rotate_cam(np.array([1,0,0]),-angle*dy/10)
+                    cam.rotate_cam(np.array([1,0,0]),angle*dy/10)
                     cam.rotate_cam(np.array([0,1,0]),angle*dx/10)
             cam.check_movement()
             
