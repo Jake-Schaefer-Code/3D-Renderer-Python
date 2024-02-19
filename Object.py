@@ -101,11 +101,11 @@ class Object:
 
         #start = time.time()
         #draw_points = Draw_Point_List(transform_points, self.cam)
-        draw_points = to_pygame(self.cam.project_points(transform_points))
+        draw_points = to_pygame(self.cam.perspective_projection(transform_points))
 
         #start = time.time()
 
-        #dp = self.cam.project_points(tp)
+        #dp = self.cam.perspective_projection(tp)
         
         #tpg = to_pygame(dp)
 
