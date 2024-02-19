@@ -18,22 +18,33 @@ class Object:
         self.newtime = 0
 
     def generate_from_obj(self, tofrust):
-        polygon_vertex_indices, points, maxval, normals, faces = read_obj(f'obj_files/{self.filename}')
-        self.maxval = maxval
-        self.polygon_indices = polygon_vertex_indices
-
-        self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
+        points, normals, component_array = read_obj(f'obj_files/{self.filename}')
+        #polygon_vertex_indices, points, normals, faces, component_array = read_obj(f'obj_files/{self.filename} ')
+        self.component_array = component_array
+        self.maxval = np.max(np.abs(points))
+        self.polygon_indices = component_array['v']
+        self.points = to_frustum_vectorized(points, self.maxval, self.cam.center) if tofrust else points
+        #self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
         self.points = np.array([p+self.position for p in self.points], dtype='float32')
         self.transposed_points = self.points.T
-
         self.numpoints = len(points)
-        self.numfaces = len(polygon_vertex_indices)
-        self.normals = normals if normals != [] else [[0,0,0,0] for _ in range(self.numfaces)]
-        self.faces = faces # List of dictionaries of vertices, normal, and textures for each face
+        self.numfaces = len(component_array['v'])
+        self.normals = np.array(normals) if normals != [] else np.zeros((self.numfaces, 4))
+        
 
 
 
-    def _generate_face_normals(self):
+    def _generate_face_normals(self) -> None:
+        normals = np.zeros((self.numfaces, 4))
+        none_indices = np.array([-1 in normal for normal in self.component_array['vn']])
+        normals[none_indices] = get_face_normal_vectorized(self.points[self.component_array['v'][none_indices]])
+        not_none = ~none_indices
+        indices = self.component_array['vn'][not_none]
+        normals[not_none] = np.mean(self.normals[indices], axis=1)
+        self.normals = normals
+        self.transposed_normals = self.normals.T
+        
+        """
         normals = []
         for i in range(len(self.faces)):
             if self.faces[i]["vn"] == []:
@@ -48,19 +59,10 @@ class Object:
             normals.append([nx,ny,nz,nw])
         self.normals = np.array(normals, dtype='float32')
         self.transposed_normals = self.normals.T
+        """
 
-    # converts to frustum coordinates
-    def to_frustum(self, point: np.ndarray) -> np.ndarray:
-        z = NEAR_Z * ((point[2])/self.maxval) + 2 * self.cam.center[2]
-        x = NEAR_Z * ((point[0])/self.maxval)
-        y = NEAR_Z * ((point[1])/self.maxval)
-        return np.array([x,y,z,point[3]])
     
-    def to_frustum_vectorized(self, points: np.ndarray) -> np.ndarray:
-        points[:,:3] *= NEAR_Z/self.maxval
-        points[:,2] *= -1
-        points[:,0] += 2 * self.cam.center[2]
-        return points
+
 
     def clip_mesh(self, mesh: list[list]) -> np.ndarray:
         triangle_queue = deque(mesh) 
@@ -83,13 +85,13 @@ class Object:
 
         #start = time.time()
         #draw_points = Draw_Point_List(transform_points, self.cam)
-        draw_points = vectorized_to_pygame2(self.cam.project_points(transform_points))
+        draw_points = to_pygame(self.cam.project_points(transform_points))
 
         #start = time.time()
 
         #dp = self.cam.project_points(tp)
         
-        #tpg = vectorized_to_pygame(dp)
+        #tpg = to_pygame(dp)
 
         #transform_points = [self.cam.transform_point(point) for point in self.points]
         #draw_points = [to_pygame(self.cam.perspective_projection(point)) for point in transform_points]
@@ -133,7 +135,7 @@ class Object:
 
         vec_mesh = self.prepare_mesh_vectorized()
         proj_mesh, colors = self.cam.project_mesh(vec_mesh)
-        pg_mesh = vectorized_to_pygame(proj_mesh)
+        pg_mesh = to_pygame(proj_mesh)
 
         for i in range(len(proj_mesh)):
             color = colors[i][0]
@@ -173,31 +175,26 @@ class Object:
         return color_and_polygons
 
     def _clip_mesh_vectorized(self, mesh: np.ndarray) -> np.ndarray:
-        triangle_queue = deque(mesh) 
+        #triangle_queue = deque(mesh) 
+        nullshape = (1, mesh.shape[1], mesh.shape[2])
         for plane in self.cam.clipping_planes:
-            for _ in range(len(triangle_queue)):
-                polygon = triangle_queue.popleft()
+            new_clipped_polygons = []
+            for polygon in mesh:
                 #if len(polygon) == 4: # Is triangle: 3 vertices and color
                 new_triangles = vectorized_clip_triangle(polygon, plane)
-                triangle_queue.extend(new_triangles)
-                """else:
-                    triangle_queue.append(polygon)"""
-
-        if len(list(triangle_queue)) == 0:
-            return np.zeros((1, mesh.shape[1], mesh.shape[2]))
+                new_clipped_polygons.extend(new_triangles)
+            mesh = np.array(new_clipped_polygons)
+        if len(mesh) == 0:
+            return np.zeros(nullshape)
         else:
-            return np.array(list(triangle_queue))
+            return mesh
         
     def prepare_mesh_vectorized(self) -> np.ndarray:
         """
         Internal Function
         """
         self.cam.update_cam()
-        #culled_polygons, projected_polygons = self.backface_culling()
         culled_polygons = self._backface_culling()
-        #reorder = vectorized_zordermesh2(culled_polygons[:,:-1,:])
-        #projected_polygons = projected_polygons[reorder]
-        #todraw = self.clip_mesh_vectorized2(projected_polygons)
         todraw = vectorized_zordermesh(culled_polygons)
         todraw = self._clip_mesh_vectorized(todraw)
         return todraw
