@@ -3,9 +3,39 @@ from constants import *
 
 
 def signed_distance(plane_normal:np.ndarray, vertex:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    plane_normal : np.ndarray
+
+    vertex : np.ndarray 
+    
+    plane_point : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
 
 def linear_interpolation(p1: np.ndarray, p2: np.ndarray, dist: float) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    p1 : np.ndarray 
+
+    p2 : np.ndarray 
+    
+    dist : float
+
+    ----------------
+    Returns:
+    ----------------
+    """
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
     #denom = ((p1x-p2x)**2+(p1y-p1y)**2+(p1z-p2z)**2)**0.5
@@ -16,6 +46,23 @@ def linear_interpolation(p1: np.ndarray, p2: np.ndarray, dist: float) -> np.ndar
     return np.array([newx, newy, newz, 1])
 
 def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarray, plane_point: np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    plane_normal : np.ndarray
+
+    p1 : np.ndarray 
+
+    p2 : np.ndarray 
+    
+    plane_point : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
     # Normal values
@@ -34,6 +81,17 @@ def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarra
     return np.array([x, y, z, 1.0])
 
 def get_face_normal_vectorized(mesh: np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    face : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     # Note: this is if the vertices are in clockwise order. If they are not, then the cross product should be the other way
     if mesh.size == 0:
         return np.zeros((1,4))
@@ -97,6 +155,18 @@ def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
 
 ### VECTORIZED ###
 def zordermesh(mesh: np.ndarray) -> np.ndarray:
+    """
+    Orders a mesh by the z-coordinates of its points
+
+    Parameters:
+    ----------------
+    mesh : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    The mesh ordered by its z-coordinates
+    """
     if mesh.size == 0:
         return mesh
 
@@ -166,6 +236,21 @@ def new_clip(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = 
         #return [np.array([v0,v1,v2,triangle[-1]]), np.array([v2,v3,v0,triangle[-1]])]
 
 def vectorized_clip_triangle2(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    triangle : np.ndarray
+
+    plane : np.ndarray 
+
+    plane_point : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     in_bounds = [None,None,None]
     num_out = 0
     vertices = triangle
@@ -208,6 +293,21 @@ def vectorized_clip_triangle2(triangle: np.ndarray, plane: np.ndarray, plane_poi
     else: return []
 
 def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    triangle : np.ndarray
+
+    plane : np.ndarray 
+
+    plane_point : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    """
     in_bounds = [None, None, None]
     num_out = 0
     vertices = triangle[:-1]
@@ -251,6 +351,18 @@ def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarr
 
 # Converts last dimension in array to pygame screen coordinates
 def to_pygame(array: np.ndarray) -> np.ndarray:
+    """
+    Takes an array of any dimension (ndim > 1) and converts its last dimension values to pygame coordinates
+
+    Parameters:
+    ----------------
+    array : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    Pygame Coordinates
+    """
     return (array[...,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
 
 # converts to frustum coordinates
