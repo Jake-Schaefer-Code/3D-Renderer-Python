@@ -36,6 +36,18 @@ def normalize(vertex, tolerance=0.00001):
 
 
 def read_obj(fileName: str):
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    fileName : str
+
+    ----------------
+    Returns:
+    ----------------
+    np.ndarray, np.ndarray, np.ndarray
+    """
     #indices = []
     vertices = []
     vertex_indices = []
