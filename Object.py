@@ -5,6 +5,22 @@ from objreader import *
 
 class Object:
     def __init__(self, camera: Camera, screen: pg.display, filename: str, position: np.ndarray, tofrust: bool = True):
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        camera : Camera
+
+        screen : pg.display
+
+        filename : str
+
+        position : np.ndarray
+
+        tofrust : bool
+
+        """
         self.cam = camera
         self.screen = screen
         self.position = position
@@ -17,7 +33,14 @@ class Object:
         self.oldtime = 0
         self.newtime = 0
 
-    def generate_from_obj(self, tofrust):
+    def generate_from_obj(self, tofrust: bool):
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        tofrust : bool
+        """
         points, normals, component_array = read_obj(f'obj_files/{self.filename}')
         #polygon_vertex_indices, points, normals, faces, component_array = read_obj(f'obj_files/{self.filename} ')
         self.component_array = component_array
@@ -31,10 +54,11 @@ class Object:
         self.numfaces = len(component_array['v'])
         self.normals = np.array(normals) if normals != [] else np.zeros((self.numfaces, 4))
         
-
-
-
     def _generate_face_normals(self) -> None:
+        """
+        What this does...
+
+        """
         normals = np.zeros((self.numfaces, 4))
         none_indices = np.array([-1 in normal for normal in self.component_array['vn']])
         normals[none_indices] = get_face_normal_vectorized(self.points[self.component_array['v'][none_indices]])
@@ -62,6 +86,13 @@ class Object:
         """
 
     def prepare_mesh(self) -> list:
+        """
+        What this does...
+
+        Returns:
+        ----------------
+        list
+        """
         #start = time.time()
         #transform_points = Transformed_List(self.points, self.cam)
         #start = time.time()
@@ -109,6 +140,9 @@ class Object:
         return todraw
 
     def draw(self) -> None:
+        """
+        What this does...
+        """
         """draw_mesh = self.prepare_mesh()
         for face in draw_mesh:
             polygon = face[1]
@@ -128,6 +162,13 @@ class Object:
             pg.draw.polygon(self.screen, (255,255,255), pg_mesh[i], width = 1)
         
     def _backface_culling(self) -> np.ndarray:
+        """
+        What this does...
+
+        Returns:
+        ----------------
+        np.ndarray
+        """
         #transformpoints = ((self.cam.matrix @ self.transposed_points).T)
 
         #tp = self.cam.matrix @ self.transposed_points
@@ -159,6 +200,18 @@ class Object:
         return color_and_polygons
 
     def _clip_mesh_vectorized(self, mesh: np.ndarray) -> np.ndarray:
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        mesh : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
         #triangle_queue = deque(mesh) 
         nullshape = (1, mesh.shape[1], mesh.shape[2])
         for plane in self.cam.clipping_planes:
@@ -174,6 +227,13 @@ class Object:
             return mesh
         
     def prepare_mesh_vectorized(self) -> np.ndarray:
+        """
+        What this does...
+
+        Returns:
+        ----------------
+        np.ndarray
+        """
         self.cam.update_cam()
         culled_polygons = self._backface_culling()
         todraw = zordermesh(culled_polygons)
