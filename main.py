@@ -22,13 +22,13 @@ def main(testing=True):
     if testing:
         profiler = cProfile.Profile()
         profiler.enable()
-        """cam = Camera()
+        cam = Camera()
         position = np.array([0,0,0,0])
         object = Object(cam, screen, 'side_prop_housings.obj', position)
         angle=math.pi/180
-        held = False"""
+        held = False
 
-        for i in range(100):
+        for i in range(10):
             cam.rotate_cam(np.array([1,0,0]),angle)
             cam.move_cam([0,0,0.02,0])
             screen.fill("slate gray")

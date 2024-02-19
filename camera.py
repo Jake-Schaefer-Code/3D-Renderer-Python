@@ -42,6 +42,7 @@ class Camera:
         
 
         self.projM = create_projection_matrix(self.lbn, self.rtf)
+        self.projMT = self.projM.T
         
 
         if r == -l and t == -b:
@@ -125,14 +126,17 @@ class Camera:
         ----------------
         np.ndarray
         """
-        if points.ndim == 1:
+        """if points.ndim == 1:
             persp_point = self.projM @ points
             return persp_point / (persp_point[3] if persp_point[3] != 0 else 1)
         elif points.ndim == 2:
             projected_points = points @ self.projM 
             w = projected_points[:, 3]
-            normalized = projected_points / np.where(w == 0, 1, w)[:, None]
-            return normalized
+            return projected_points / np.where(w == 0, 1, w)[:, None]"""
+        
+        projected_points = points @ self.projMT
+        w = projected_points[..., 3]
+        return projected_points / np.where(w == 0, 1, w)[..., None]
         
     def project_mesh(self, mesh:np.ndarray) -> np.ndarray:
         """
@@ -202,5 +206,3 @@ class Camera:
         x = point[0]
         y = -point[1]
         return np.array([x,y,z,point[3]])
-
-    
