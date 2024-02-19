@@ -8,14 +8,6 @@ from constants import *
 from camera import *
 from Object import *
 
-
-"""def compile_functions() -> None:
-    signature = types.float64(types.float64[:], types.float64[:], types.float64[:])
-    signed_distance.compile(signature)
-    signature = types.float64(types.float64[:], types.float64[:], types.float64[:], types.float64[:])
-    line_plane_intersect.compile(signature)"""
-
-#@memory_profiler.profile
 def main(testing=True):
     pg.init()
     screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -31,6 +23,12 @@ def main(testing=True):
     if testing:
         profiler = cProfile.Profile()
         profiler.enable()
+        """cam = Camera()
+        position = np.array([0,0,0,0])
+        object = Object(cam, screen, 'side_prop_housings.obj', position)
+        angle=math.pi/180
+        held = False"""
+
         for i in range(100):
             cam.rotate_cam(np.array([1,0,0]),angle)
             cam.move_cam([0,0,0.025,0])
@@ -41,7 +39,7 @@ def main(testing=True):
 
         profiler.disable()
         stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats(50)
+        stats.print_stats(40)
         #print('NEWTIME', object.newtime)
         #print('OLDTIME', object.oldtime)
     
@@ -69,6 +67,6 @@ def main(testing=True):
 
 
 if __name__ == '__main__':
-    main(False)
+    main(True)
 pg.quit()
 
