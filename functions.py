@@ -6,6 +6,11 @@ def signed_distance(plane_normal:np.ndarray, vertex:np.ndarray, plane_point:np.n
     #DISTANCE = (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
     return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
 
+def signed_distance_vectorized(vertices: np.ndarray, plane_normal:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
+    return np.dot((vertices-plane_point),plane_normal)
+    #return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
+
+
 def linear_interpolation(p1: np.ndarray, p2: np.ndarray, dist: float) -> np.ndarray:
     p1x,p1y,p1z,p1w = p1 
     p2x,p2y,p2z,p2w = p2
@@ -34,19 +39,49 @@ def line_plane_intersect(plane_normal: np.ndarray, p1: np.ndarray, p2: np.ndarra
 
     return np.array([x, y, z, 1.0])
 
-def get_face_normal(face: np.ndarray) -> np.ndarray:
+def get_face_normal_vectorized(mesh: np.ndarray) -> np.ndarray:
     # Note: this is if the vertices are in clockwise order. If they are not, then the cross product should be the other way
-    x1, y1, z1, w1 = (face[2] - face[0])
-    x2, y2, z2, w2 = (face[1] - face[0])
-    # returns the vector perpendicular to the face, which I will compare with either the camera direction or the light direction
-    normal = [(y1 * z2 - z1 * y2), 
-              (z1 * x2 - x1 * z2), 
-              (x1 * y2 - y1 * x2), 0]
-    nx, ny, nz, nw = normal
-    norm = (nx ** 2 + ny ** 2 + nz ** 2)**0.5
-    if norm != 0:
-        normal = [nx/norm, ny/norm, nz/norm, 0]
-    return normal
+    if mesh.size == 0:
+        return np.zeros((1,4))
+    
+    if mesh.ndim == 3:
+        normals = []
+        edge1 = mesh[:,2,:3] - mesh[:,0,:3]
+        edge2 = mesh[:,1,:3] - mesh[:,0,:3]
+        normals = np.cross(edge1, edge2, axis=1)
+        norms = np.linalg.norm(normals, axis=1, keepdims=True)
+        normals = normals / np.where(norms != 0, norms, 1)
+        normals = np.hstack([normals, np.zeros((normals.shape[0], 1))])
+        return normals
+
+    elif mesh.ndim == 2:
+        x1, y1, z1, w1 = (mesh[2] - mesh[0])
+        x2, y2, z2, w2 = (mesh[1] - mesh[0])
+        # returns the vector perpendicular to the face, which I will compare with either the camera direction or the light direction
+        normal = [(y1 * z2 - z1 * y2), 
+                (z1 * x2 - x1 * z2), 
+                (x1 * y2 - y1 * x2), 0]
+        nx, ny, nz, nw = normal
+        norm = (nx ** 2 + ny ** 2 + nz ** 2)**0.5
+        if norm != 0:
+            normal = [nx/norm, ny/norm, nz/norm, 0]
+        return normal
+    
+    else:
+        return
+    """for face in mesh:
+        x1, y1, z1, w1 = (face[2] - face[0])
+        x2, y2, z2, w2 = (face[1] - face[0])
+        # returns the vector perpendicular to the face, which I will compare with either the camera direction or the light direction
+        normal = [(y1 * z2 - z1 * y2), 
+                (z1 * x2 - x1 * z2), 
+                (x1 * y2 - y1 * x2), 0]
+        nx, ny, nz, nw = normal
+        norm = (nx ** 2 + ny ** 2 + nz ** 2)**0.5
+        if norm != 0:
+            normal = [nx/norm, ny/norm, nz/norm, 0]
+        normals.append(normal)"""
+    
 
 def zordermesh(mesh: list) -> list:
     mesh_size = len(mesh)
@@ -113,16 +148,18 @@ def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: list = [
 def vectorized_zordermesh(mesh: np.ndarray) -> np.ndarray:
     if mesh.size == 0:
         return mesh
-    zmeans = np.mean(mesh[:, :-1, 2], axis=1)
-    reordered_indices = np.argsort(zmeans)[::-1]
+
+    if mesh.shape[1] > 3:
+        zmeans = np.mean(mesh[:, :-1, 2], axis=1)
+        reordered_indices = np.argsort(zmeans)[::-1]
+
+    else:
+        zmeans = np.mean(mesh[:, :, 2], axis=1)
+        reordered_indices = np.argsort(zmeans)[::-1]
+
     return mesh[reordered_indices]
 
-def vectorized_zordermesh_no_colors(mesh: np.ndarray) -> np.ndarray:
-    if mesh.size == 0:
-        return mesh
-    zmeans = np.mean(mesh[:, :, 2], axis=1)
-    reordered_indices = np.argsort(zmeans)[::-1]
-    return reordered_indices
+
 
 def new_clip(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
     #previous_distance = signed_distance(plane, triangle[0], plane_point)
@@ -222,7 +259,7 @@ def vectorized_clip_triangle2(triangle: np.ndarray, plane: np.ndarray, plane_poi
     else: return []
 
 def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
-    in_bounds = [None,None,None]
+    in_bounds = [None, None, None]
     num_out = 0
     vertices = triangle[:-1]
     # Checking each vertex in the triangle
@@ -264,14 +301,73 @@ def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_poin
     
     else: return []
 
-def to_pygame(point: list) -> list:
-    return [(point[0] * HALFWIDTH) + HALFWIDTH, (point[1] * -HALFHEIGHT) + HALFHEIGHT]
+def vectorized_clip_triangle3(triangle: np.ndarray, plane: np.ndarray, mesh:np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
+    in_bounds = np.empty((mesh.shape[0], 3,4), dtype=object)
+    in_bounds.fill(None)
+    num_out = 0
+    vertices = triangle[:-1]
+    # Checking each vertex in the triangle
+    thing = signed_distance_vectorized(vertices, plane, plane_point) > 0
+    
+    in_bounds[thing] = vertices[thing]
+    num_out = np.count_nonzero(thing)
 
-def vectorized_to_pygame(mesh: np.ndarray) -> np.ndarray:
-    return (mesh[:,:,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
+    """for i in range(3):
+        vertex = vertices[i]
+        if signed_distance(plane, vertex, plane_point) < 0: 
+            num_out += 1
+        
+        else: in_bounds[i] = vertex"""
+    if num_out == 0: return [triangle]
 
-def vectorized_to_pygame2(points: np.ndarray) -> np.ndarray:
-    return (points[:,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
+
+    # If one point is OOB, then make 2 new triangles
+    elif num_out == 1:
+        new_points = []
+        color = triangle[-1]
+        for i in range(3):
+            if in_bounds[i][0] is not None:
+                new_points.append(in_bounds[i])
+            else:
+                new_points.append(line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point))
+                new_points.append(line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point))
+                
+        triangle1 = np.array([new_points[0],new_points[1],new_points[2], color])
+        triangle2 = np.array([new_points[0],new_points[2],new_points[3], color])
+        return [triangle1, triangle2]
+    
+    # If two points are OOB, then chop off the part of the triangle out of bounds
+    elif num_out == 2:
+        for i in range(3):
+            if in_bounds[i][0] is not None:
+                new_vertices = vertices
+                # intersection of plane and line from current vertex to both OOB vertices
+                new_vertices[(i+1)%3] = line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point)
+                new_vertices[(i-1)%3] = line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point)
+
+        triangle[:-1] = new_vertices
+        return [triangle]
+    
+    else: return []
+
+
+# Converts last dimension in array to pygame screen coordinates
+def to_pygame(array: np.ndarray) -> np.ndarray:
+    return (array[...,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
+
+# converts to frustum coordinates
+def to_frustum_point(point: np.ndarray, maxval: float, shift: np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
+        z = NEAR_Z * ((point[2])/maxval) + shift[2]
+        x = NEAR_Z * ((point[0])/maxval)
+        y = NEAR_Z * ((point[1])/maxval)
+        return np.array([x,y,z,point[3]])
+
+def to_frustum_vectorized(points: np.ndarray, maxval:float, shift:np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
+    points[:,:3] *= NEAR_Z/maxval
+    points[:,:3] += shift[:3]
+    return points
+
+
 
 
 def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
@@ -280,7 +376,7 @@ def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
 
 def ortho_project_polygon(polygon: np.ndarray) -> np.ndarray:
     n = polygon.shape[0]
-    normal = get_face_normal(polygon)
+    normal = get_face_normal_vectorized(polygon)
     basisU = polygon[1] - polygon[0]
     basisU /= np.linalg.norm(basisU)
     basisV = np.cross(normal, basisU)
