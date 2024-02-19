@@ -81,30 +81,119 @@ class Camera:
         elif keys[pg.K_LSHIFT]:
             self.move_cam(-self.move_y/fps)
 
-
-    # Applying transformation matrix on a single point
     def transform_point(self, point:np.ndarray) -> np.ndarray:
+        """
+        Applies the transformation matrix on a single point
+
+        Parameters:
+        ----------------
+        point : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
         return self.matrix @ point
     
     # Applying transformation matrix over an array
     def transform_point_array(self, transposed_points:np.ndarray) -> np.ndarray:
+        """
+        Transforms an array of transposed points using the camera matrix
+
+        Parameters:
+        ----------------
+        transposed_points : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
         return (self.matrix @ transposed_points).T
     
-    # Projecting a single point onto projection plane
-    def perspective_projection(self, point: np.ndarray) -> np.ndarray:
-        persp_point = self.projM @ point
-        return persp_point / (persp_point[3] if persp_point[3] != 0 else 1)
+    def perspective_projection(self, points: np.ndarray) -> np.ndarray:
+        """
+        Projects a single, or an array of points onto the projection plane
+
+        Parameters:
+        ----------------
+        points : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
+        if points.ndim == 1:
+            persp_point = self.projM @ points
+            return persp_point / (persp_point[3] if persp_point[3] != 0 else 1)
+        elif points.ndim == 2:
+            projected_points = points @ self.projM 
+            w = projected_points[:, 3]
+            normalized = projected_points / np.where(w == 0, 1, w)[:, None]
+            return normalized
+        
+    def project_mesh(self, mesh:np.ndarray) -> np.ndarray:
+        """
+        Projects a mesh of polygons onto the projection plane
+
+        Parameters:
+        ----------------
+        mesh : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
+        projected_mesh = np.einsum('ij,nkj->nki', self.projM, mesh[:, :3, :])
+        colors = mesh[:,-1,:]
+        w = projected_mesh[:, :, 3]
+        
+        normalized = projected_mesh / np.where(w == 0, 1, w)[:, :, None]
+        return normalized, colors
 
     # Camera movement
     def move_cam(self, trans_vector: np.ndarray) -> None:
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        trans_vector : np.ndarray
+
+        """
         self.matrix = translate_matrix(self.matrix, trans_vector)
 
     # Camera Rotation
     def rotate_cam(self, axis: np.ndarray, angle: float) -> None:
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        axis : np.ndarray
+
+        angle : float
+
+        """
         self.matrix = q_mat_rot(self.matrix, axis, angle)
             
     # converts to canonical viewing space
     def z_scale(self, point: np.ndarray) -> np.ndarray:
+        """
+        What this does...
+
+        Parameters:
+        ----------------
+        point : np.ndarray
+
+        ----------------
+        Returns:
+        ----------------
+        np.ndarray
+        """
         n = self.nearz
         f = self.farz
         c1 = 2*f*n/(n-f)
@@ -114,20 +203,4 @@ class Camera:
         y = -point[1]
         return np.array([x,y,z,point[3]])
 
-    ### VECTORIZED ###
-    # Projects a mesh onto the projection plane
-    def project_mesh(self, mesh:np.ndarray) -> np.ndarray:
-        projected_mesh = np.einsum('ij,nkj->nki', self.projM, mesh[:, :3, :])
-        colors = mesh[:,-1,:]
-        w = projected_mesh[:, :, 3]
-        
-        normalized = projected_mesh / np.where(w == 0, 1, w)[:, :, None]
-        return normalized, colors
     
-    # Projects an array of points onto the projection plane
-    def project_points(self, points:np.ndarray) -> np.ndarray:
-        projected_points = points @ self.projM 
-        w = projected_points[:, 3]
-        normalized = projected_points / np.where(w == 0, 1, w)[:, None]
-        return normalized
-
