@@ -233,6 +233,18 @@ class Object:
             # Draws edges on triangles
             #pygame.draw.polygon(self.screen,"white", t, width = 1)
 
+    def clip_mesh(self, mesh: list[list]) -> np.ndarray:
+        triangle_queue = deque(mesh) 
+        for plane in self.planes:
+            for _ in range(len(triangle_queue)):
+                polygon = triangle_queue.popleft()
+                if len(polygon[0]) == 3: # Is triangle: 3 vertices and color
+                    new_triangles = clip_triangle(polygon, plane)
+                    triangle_queue.extend(new_triangles)
+                else:
+                    triangle_queue.append(polygon)
+        return list(triangle_queue)
+    
     def zordermesh(self, mesh):
         mesh3 = []
         for i in range(len(mesh)):

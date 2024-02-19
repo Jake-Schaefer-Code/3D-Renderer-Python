@@ -41,5 +41,75 @@ def get_face_normal(face):
     return normal
 
 
-def to_pygame(point):
-    return ((point * SCREEN_SCALE) + SCREEN_ORIGIN)[:-2]
+def to_pygame(point: np.ndarray) -> np.ndarray:
+    return ((point * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN)[:-2]
+
+def zordermesh(mesh: list) -> list:
+    mesh_size = len(mesh)
+    means = [0 for _ in range(mesh_size)]
+    for i in range(mesh_size):
+        length = len(mesh[i][0])
+        mean = 0
+        for j in range(length):
+            mean+=mesh[i][0][j][2]
+        mean /= length
+        means[i] = mean
+
+    if means == []:
+        return mesh
+    
+    reorder = np.argsort(means)[::-1]
+    return [mesh[reorder[i]] for i in range(mesh_size)]
+
+
+def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: list = [0,0,0,0]) -> list:
+    in_bounds = [None,None,None]
+    num_out = 0
+    vertices = triangle[0]
+    
+    # Checking each vertex in the triangle
+    for i in range(3):
+        vertex = vertices[i]
+        if signed_distance(plane, vertex, plane_point) < 0: 
+            num_out += 1
+        
+        else: in_bounds[i] = vertex
+    if num_out == 0: return [triangle]
+    
+    # If one point is OOB, then make 2 new triangles
+    elif num_out == 1:
+        new_points = []
+        color = triangle[2]
+        indices = triangle[1]
+        for i in range(3):
+            if in_bounds[i] is not None:
+                new_points.append(in_bounds[i])
+            else:
+                new_points.append(line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point))
+                new_points.append(line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point))
+                
+        triangle1 = [[new_points[0],new_points[1],new_points[2]], indices, color]
+        triangle2 = [[new_points[0],new_points[2],new_points[3]], indices, color]
+        return [triangle1, triangle2]
+    
+    # If two points are OOB, then chop off the part of the triangle out of bounds
+    elif num_out == 2:
+        for i in range(3):
+            if in_bounds[i] is not None:
+                new_vertices = vertices
+                # intersection of plane and line from current vertex to both OOB vertices
+                new_vertices[(i+1)%3] = line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point)
+                new_vertices[(i-1)%3] = line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point)
+
+        triangle[0] = new_vertices
+        return [triangle]
+    
+    else: return []
+
+
+
+def to_frustum_point(point: np.ndarray, maxval: float, shift: np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
+    z = NEAR_Z * ((point[2])/maxval) + shift[2]
+    x = NEAR_Z * ((point[0])/maxval)
+    y = NEAR_Z * ((point[1])/maxval)
+    return np.array([x,y,z,point[3]])
