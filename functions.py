@@ -3,13 +3,7 @@ from constants import *
 
 
 def signed_distance(plane_normal:np.ndarray, vertex:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
-    #DISTANCE = (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
     return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
-
-def signed_distance_vectorized(vertices: np.ndarray, plane_normal:np.ndarray, plane_point:np.ndarray) -> np.ndarray:
-    return np.dot((vertices-plane_point),plane_normal)
-    #return (plane_normal[0] * (vertex[0] - plane_point[0]) + plane_normal[1] * (vertex[1] - plane_point[1]) + plane_normal[2] * (vertex[2] - plane_point[2]))
-
 
 def linear_interpolation(p1: np.ndarray, p2: np.ndarray, dist: float) -> np.ndarray:
     p1x,p1y,p1z,p1w = p1 
@@ -82,70 +76,27 @@ def get_face_normal_vectorized(mesh: np.ndarray) -> np.ndarray:
             normal = [nx/norm, ny/norm, nz/norm, 0]
         normals.append(normal)"""
     
+def angle_between_points(p1:np.ndarray, p2:np.ndarray, p3:np.ndarray) -> float:
+    """Returns angle between points in radians"""
+    v1 = p1 - p2
+    v2 = p3 - p2
+    dot = np.dot(v1, v2)
+    print(dot)
+    magv1 = np.linalg.norm(v1)
+    magv2 = np.linalg.norm(v2)
+    return np.arccos(dot/(magv1 * magv2))
 
-def zordermesh(mesh: list) -> list:
-    mesh_size = len(mesh)
-    means = [0 for _ in range(mesh_size)]
-    for i in range(mesh_size):
-        length = len(mesh[i][0])
-        mean = 0
-        for j in range(length):
-            mean+=mesh[i][0][j][2]
-        mean /= length
-        means[i] = mean
+def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
+    dot = np.dot(v1, v2)
+    magv1 = np.linalg.norm(v1)
+    magv2 = np.linalg.norm(v2)
+    return np.arccos(dot/(magv1 * magv2))
 
-    if means == []:
-        return mesh
-    
-    reorder = np.argsort(means)[::-1]
-    return [mesh[reorder[i]] for i in range(mesh_size)]
 
-def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: list = [0,0,0,0]) -> list:
-    in_bounds = [None,None,None]
-    num_out = 0
-    vertices = triangle[0]
-    
-    # Checking each vertex in the triangle
-    for i in range(3):
-        vertex = vertices[i]
-        if signed_distance(plane, vertex, plane_point) < 0: 
-            num_out += 1
-        
-        else: in_bounds[i] = vertex
-    if num_out == 0: return [triangle]
-    
-    # If one point is OOB, then make 2 new triangles
-    elif num_out == 1:
-        new_points = []
-        color = triangle[2]
-        indices = triangle[1]
-        for i in range(3):
-            if in_bounds[i] is not None:
-                new_points.append(in_bounds[i])
-            else:
-                new_points.append(line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point))
-                new_points.append(line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point))
-                
-        triangle1 = [[new_points[0],new_points[1],new_points[2]], indices, color]
-        triangle2 = [[new_points[0],new_points[2],new_points[3]], indices, color]
-        return [triangle1, triangle2]
-    
-    # If two points are OOB, then chop off the part of the triangle out of bounds
-    elif num_out == 2:
-        for i in range(3):
-            if in_bounds[i] is not None:
-                new_vertices = vertices
-                # intersection of plane and line from current vertex to both OOB vertices
-                new_vertices[(i+1)%3] = line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point)
-                new_vertices[(i-1)%3] = line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point)
 
-        triangle[0] = new_vertices
-        return [triangle]
-    
-    else: return []
 
 ### VECTORIZED ###
-def vectorized_zordermesh(mesh: np.ndarray) -> np.ndarray:
+def zordermesh(mesh: np.ndarray) -> np.ndarray:
     if mesh.size == 0:
         return mesh
 
@@ -158,8 +109,6 @@ def vectorized_zordermesh(mesh: np.ndarray) -> np.ndarray:
         reordered_indices = np.argsort(zmeans)[::-1]
 
     return mesh[reordered_indices]
-
-
 
 def new_clip(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
     #previous_distance = signed_distance(plane, triangle[0], plane_point)
@@ -258,7 +207,7 @@ def vectorized_clip_triangle2(triangle: np.ndarray, plane: np.ndarray, plane_poi
     
     else: return []
 
-def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
+def clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
     in_bounds = [None, None, None]
     num_out = 0
     vertices = triangle[:-1]
@@ -295,59 +244,8 @@ def vectorized_clip_triangle(triangle: np.ndarray, plane: np.ndarray, plane_poin
                 # intersection of plane and line from current vertex to both OOB vertices
                 new_vertices[(i+1)%3] = line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point)
                 new_vertices[(i-1)%3] = line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point)
-
         triangle[:-1] = new_vertices
         return [triangle]
-    
-    else: return []
-
-def vectorized_clip_triangle3(triangle: np.ndarray, plane: np.ndarray, mesh:np.ndarray, plane_point: np.ndarray = np.array([0,0,0,0])) -> list:
-    in_bounds = np.empty((mesh.shape[0], 3,4), dtype=object)
-    in_bounds.fill(None)
-    num_out = 0
-    vertices = triangle[:-1]
-    # Checking each vertex in the triangle
-    thing = signed_distance_vectorized(vertices, plane, plane_point) > 0
-    
-    in_bounds[thing] = vertices[thing]
-    num_out = np.count_nonzero(thing)
-
-    """for i in range(3):
-        vertex = vertices[i]
-        if signed_distance(plane, vertex, plane_point) < 0: 
-            num_out += 1
-        
-        else: in_bounds[i] = vertex"""
-    if num_out == 0: return [triangle]
-
-
-    # If one point is OOB, then make 2 new triangles
-    elif num_out == 1:
-        new_points = []
-        color = triangle[-1]
-        for i in range(3):
-            if in_bounds[i][0] is not None:
-                new_points.append(in_bounds[i])
-            else:
-                new_points.append(line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point))
-                new_points.append(line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point))
-                
-        triangle1 = np.array([new_points[0],new_points[1],new_points[2], color])
-        triangle2 = np.array([new_points[0],new_points[2],new_points[3], color])
-        return [triangle1, triangle2]
-    
-    # If two points are OOB, then chop off the part of the triangle out of bounds
-    elif num_out == 2:
-        for i in range(3):
-            if in_bounds[i][0] is not None:
-                new_vertices = vertices
-                # intersection of plane and line from current vertex to both OOB vertices
-                new_vertices[(i+1)%3] = line_plane_intersect(plane, vertices[(i+1)%3], vertices[i], plane_point)
-                new_vertices[(i-1)%3] = line_plane_intersect(plane, vertices[(i-1)%3], vertices[i], plane_point)
-
-        triangle[:-1] = new_vertices
-        return [triangle]
-    
     else: return []
 
 
@@ -356,19 +254,16 @@ def to_pygame(array: np.ndarray) -> np.ndarray:
     return (array[...,:2] * PYGAME_WINDOW_SCALE) + PYGAME_WINDOW_ORIGIN
 
 # converts to frustum coordinates
-def to_frustum_point(point: np.ndarray, maxval: float, shift: np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
-        z = NEAR_Z * ((point[2])/maxval) + shift[2]
-        x = NEAR_Z * ((point[0])/maxval)
-        y = NEAR_Z * ((point[1])/maxval)
-        return np.array([x,y,z,point[3]])
-
 def to_frustum_vectorized(points: np.ndarray, maxval:float, shift:np.ndarray = np.array([0,0,0,0])) -> np.ndarray:
-    points[:,:3] *= NEAR_Z/maxval
-    points[:,:3] += shift[:3]
-    return points
-
-
-
+    if points.ndim == 1:
+        z = NEAR_Z * ((points[2])/maxval) + shift[2]
+        x = NEAR_Z * ((points[0])/maxval)
+        y = NEAR_Z * ((points[1])/maxval)
+        return np.array([x,y,z,points[3]])
+    else:
+        points[:,:3] *= NEAR_Z/maxval
+        points[:,:3] += shift[:3]
+        return points
 
 def triangulate_mesh(mesh: np.ndarray) -> np.ndarray:
     ortho_mesh = np.array([ortho_project_polygon(polygon) for polygon in mesh])
@@ -388,22 +283,6 @@ def ortho_project_polygon(polygon: np.ndarray) -> np.ndarray:
         y = np.dot(p_prime, basisV)
         projected_points[i] = (x,y)
     return projected_points
-
-def angle_between_points(p1:np.ndarray, p2:np.ndarray, p3:np.ndarray) -> float:
-    """Returns angle between points in radians"""
-    v1 = p1 - p2
-    v2 = p3 - p2
-    dot = np.dot(v1, v2)
-    print(dot)
-    magv1 = np.linalg.norm(v1)
-    magv2 = np.linalg.norm(v2)
-    return np.arccos(dot/(magv1 * magv2))
-
-def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
-    dot = np.dot(v1, v2)
-    magv1 = np.linalg.norm(v1)
-    magv2 = np.linalg.norm(v2)
-    return np.arccos(dot/(magv1 * magv2))
 
 def ear_triangulate(polygon: np.ndarray) -> np.ndarray:
     """
