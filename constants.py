@@ -33,13 +33,18 @@ FX = (1/math.tan(FOVY/2))/ASPECT_RATIO
 
 NEAR_PLANE_HEIGHT = 2 * math.tan(FOVY/2) * NEAR_Z
 NEAR_PLANE_WIDTH = 2 * math.tan(FOVY/2) * NEAR_Z * ASPECT_RATIO
-FOVX = math.atan((NEAR_PLANE_WIDTH/2)/NEAR_Z)*2
+FOVX = math.atan((NEAR_PLANE_WIDTH/2)/NEAR_Z) * 2
 
 
 
 # define coordinate origin to be in center of the screen, input point is in this form
 SCREEN_ORIGIN = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,0,1])
 SCREEN_SCALE = np.array([SCREEN_WIDTH/2, SCREEN_HEIGHT/2,1,0])
+
+
+# This is because we define the coordinate system such that +1 is up, but pygame defines it opposite
+PYGAME_WINDOW_SCALE = np.array([HALFWIDTH, -HALFHEIGHT]) 
+PYGAME_WINDOW_ORIGIN = np.array([HALFWIDTH, HALFHEIGHT])
 
 
 """projM = create_projection_matrix([-NEAR_PLANE_WIDTH/2, -NEAR_PLANE_HEIGHT/2, NEAR_Z],[NEAR_PLANE_WIDTH/2, NEAR_PLANE_HEIGHT/2, FAR_Z])
