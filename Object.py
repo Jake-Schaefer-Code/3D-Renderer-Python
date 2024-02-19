@@ -23,7 +23,7 @@ class Object:
         self.component_array = component_array
         self.maxval = np.max(np.abs(points))
         self.polygon_indices = component_array['v']
-        self.points = to_frustum_vectorized(points, self.maxval, self.cam.center) if tofrust else points
+        self.points = to_frustum(points, self.maxval, self.cam.center) if tofrust else points
         #self.points = np.array([self.to_frustum(p) for p in points]) if tofrust else np.array([p for p in points])
         self.points = np.array([p+self.position for p in self.points], dtype='float32')
         self.transposed_points = self.points.T
