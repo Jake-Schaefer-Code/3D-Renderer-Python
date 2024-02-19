@@ -150,6 +150,14 @@ def angle_between_vectors(v1:np.ndarray, v2:np.ndarray) -> float:
     magv2 = np.linalg.norm(v2)
     return np.arccos(dot/(magv1 * magv2))
 
+def normalize(vertex: np.ndarray, tolerance: float=0.00001):
+    mag2 = sum(n * n for n in vertex[:-1])
+    if abs(mag2 - 1.0) > tolerance:
+        mag = math.sqrt(mag2)
+        v = np.array([n / mag for n in vertex[:-1]])
+        v = np.append(v,1)
+    return v
+
 
 def zordermesh(mesh: np.ndarray) -> np.ndarray:
     """
@@ -354,7 +362,7 @@ def to_pygame(array: np.ndarray) -> np.ndarray:
     Parameters:
     ----------------
     array : np.ndarray
-
+        An array, which contains point coordinates in the last dimension
     ----------------
     Returns:
     ----------------
