@@ -17,6 +17,6 @@ def main(testing=True, old=False):
         engine.run()
 
 if __name__ == '__main__':
-    main(testing=True, old=False)
+    main(testing=False, old=False)
 
 
