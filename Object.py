@@ -29,6 +29,7 @@ class Object:
 
         self.planes = PLANE_NORMALS
         self.plane_points = PLANE_POINTS
+        self.mono_color = np.array([255,255,255])
 
         
 
@@ -43,7 +44,7 @@ class Object:
         self.objFile.read_obj()
         
         points = self.objFile.vertices
-        self.points = to_frustum(points + self.position, self.objFile.maxval, self.cam.center) if tofrust else points + self.position
+        self.points = to_frustum(points + self.position, self.objFile.maxval, 0.5*self.cam.center) if tofrust else points + self.position
         self.transposed_points = self.points.T
         self.numpoints = len(self.points)
 
@@ -56,7 +57,7 @@ class Object:
         
     def _generate_face_normals(self) -> None:
         """
-        What this does...
+        Generates the normals of each polygon in the object
 
         """
         normals = np.zeros((self.numfaces, 4))
@@ -64,52 +65,26 @@ class Object:
         normals[none_indices] = get_face_normal_vectorized(self.points[self.component_array['v'][none_indices]])
         not_none = ~none_indices
         indices = self.component_array['vn'][not_none]
-        normals[not_none] = np.mean(self.normals[indices], axis=1)
+        if np.any(not_none):
+            normals[not_none] = np.mean(self.normals[indices], axis=1)
         self.normals = normals
         self.transposed_normals = self.normals.T
-        
-    
-        """
-        normals = []
-        for i in range(len(self.faces)):
-            if self.faces[i]["vn"] == []:
-                vertex_indices = self.faces[i]["v"]
-                face = [self.points[j] for j in vertex_indices]
-                normal = get_face_normal(face)
-                nx, ny, nz, nw = normal
-            else:
-                nx, ny, nz, nw = np.mean(np.array([self.normals[index] for index in self.faces[i]["vn"]]), axis=0)
-            
-            self.faces[i]["vn"] = [nx,ny,nz,nw]
-            normals.append([nx,ny,nz,nw])
-        self.normals = np.array(normals, dtype='float32')
-        self.transposed_normals = self.normals.T
-        """
 
     def draw(self) -> None:
         """
-        What this does...
+        Puts the object through the rendering pipeline and draws it to the screen
+
         """
-        """
-        draw_mesh = self.prepare_mesh()
-        for face in draw_mesh:
-            polygon = face[1]
-            color = face[2]
-            # Draws Polygons
-            pg.draw.polygon(self.screen,(255*color,255*color,255*color), polygon, width = 0)
-            # Draws edges on triangles
-            pg.draw.polygon(self.screen, (20,20,20), polygon, width = 1)
-            """
         
         vec_mesh = self.mesh_prep_pipeline()
         proj_mesh, colors = self.cam.project_mesh(vec_mesh)
         pg_mesh = to_pygame(proj_mesh)
         
-
         for i in range(len(proj_mesh)):
-            color = colors[i][0]
-            pg.draw.polygon(self.screen,(255*color,255*color,255*color), pg_mesh[i], width = 0)
-            pg.draw.polygon(self.screen, (255,255,255), pg_mesh[i], width = 1)
+            color = self.mono_color * colors[i][0]
+            #(255*shading,255*shading,255*shading)
+            pg.draw.polygon(self.screen, color, pg_mesh[i], width = 0)
+            #pg.draw.polygon(self.screen, (255,255,255), pg_mesh[i], width = 1)
         
     def _backface_culling(self) -> np.ndarray:
         """
