@@ -3,7 +3,7 @@ import numpy as np
 import pygame as pg
 import os
 from collections import deque
-from matrices import *
+#from matrices import *
 """Constants for 3D Renderer"""
 
 # Desired width and height of screen
@@ -58,7 +58,7 @@ PLANE_POINTS = NEAR_Z * np.array([np.array([0, 0, 0, 0]), # right
 
 
 BACKGROUND_COLOR = (80,85,90)
-SPEED = 0.025
+SPEED = 0.01
 MAX_FPS = 60
 ROT_ANGLE = math.pi/360
 RATE = SPEED * MAX_FPS
