@@ -1,71 +1,22 @@
-import math
-import cProfile,pstats
-
-
 from quaternions import *
 from functions import *
 from constants import *
 from camera import *
 from Object import *
+from engine import *
 
-def main(testing=True):
-    pg.init()
-    screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    clock = pg.time.Clock() 
-    running = True
-    cam = Camera()
-    position = np.array([0,0,0,0])
-    object = Object(cam, screen, 'side_prop_housings.obj', position)
-    angle=math.pi/360
-    held = False
-
-    if testing:
-        profiler = cProfile.Profile()
-        profiler.enable()
-        cam = Camera()
-        position = np.array([0,0,0,0])
-        object = Object(cam, screen, 'side_prop_housings.obj', position)
-        angle=math.pi/180
-        held = False
-
-        for i in range(10):
-            cam.rotate_cam(np.array([1,0,0]),angle)
-            cam.move_cam([0,0,0.02,0])
-            screen.fill("slate gray")
-
-            object.draw()
-            pg.display.flip()
-
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats(40)
-        #print('NEWTIME', object.newtime)
-        #print('OLDTIME', object.oldtime)
-    
-    if not testing:
-        while running:
-            for event in pg.event.get():
-                if event.type == pg.QUIT: running = False
-                elif event.type == pg.MOUSEBUTTONDOWN: held = True
-                elif event.type == pg.MOUSEBUTTONUP: held = False
-
-                if event.type == pg.MOUSEMOTION and held:
-                    dx, dy = event.rel
-                    # Rotate about y axis when mouse moves L->R and x-axis when mouse moves UP->DOWN
-                    cam.rotate_cam(np.array([1,0,0]),angle*dy/10)
-                    cam.rotate_cam(np.array([0,1,0]),angle*dx/10)
-            cam.check_movement()
-            
-            # DRAWING SCREEN
-            screen.fill(BACKGROUND_COLOR)
-            object.draw()
-
-            pg.display.flip()
-            clock.tick(60)
-            print(clock)
-
+def main(testing=True, old=False):
+    if old:
+        from old_files import oldmain
+        oldmain.old_main(testing)
+    else:
+        engine = RenderEngine(testing)
+        object = Object(engine.cam, engine.screen, 'side_prop_housings.obj', np.array([0,0,0,0]))
+        engine.add_object(object)
+        engine.setup_screen()
+        engine.run()
 
 if __name__ == '__main__':
-    main()
-pg.quit()
+    main(testing=True, old=False)
+
 

@@ -1,4 +1,5 @@
 import numpy as np
+from constants import *
 
 def _create_orthographic_matrix(r:float,l:float,t:float,b:float) -> np.ndarray:
     """
@@ -103,7 +104,33 @@ def translate_matrix(matrix: np.ndarray, trans_vector: np.ndarray) -> np.ndarray
     np.ndarray
         New translation matrix
     """
+
     TRANSLATION_MATRIX[0][3] = -trans_vector[0]
     TRANSLATION_MATRIX[1][3] = -trans_vector[1]
     TRANSLATION_MATRIX[2][3] = -trans_vector[2]
     return TRANSLATION_MATRIX @ matrix
+
+# converts to canonical viewing space
+def z_scale(point: np.ndarray) -> np.ndarray:
+    """
+    What this does...
+
+    Parameters:
+    ----------------
+    point : np.ndarray
+
+    ----------------
+    Returns:
+    ----------------
+    np.ndarray
+    """
+    # Distance to near (projection) plane
+    n = NEAR_Z
+    # Distance to far plane
+    f = FAR_Z
+    c1 = 2*f*n/(n-f)
+    c2 = (f+n)/(f-n)
+    z = c1/(point[2]-c2)
+    x = point[0]
+    y = -point[1]
+    return np.array([x,y,z,point[3]])

@@ -44,7 +44,51 @@ class OBJFile:
         ----------------
         np.ndarray, np.ndarray, np.ndarray
         """
-        with open(self.filePath) as f:
+
+        lg = self.create_line_generator()
+        for line in lg:
+            if len(line) == 0:
+                continue
+
+            elif line[0] == '#':
+                continue
+
+            # Vertices
+            if line[0] == "v":
+                self.vertices.append(np.array([float(line[1]), float(line[2]), float(line[3]), 1]))
+                
+            # Indices of vertices for the faces
+            elif line[0] =="f":
+                face_coords = [[],[],[]]
+                for val in line[1:]:
+                    elements = val.split('/')
+                    if len(elements) >= 2:
+                        face_coords[1].append(int(elements[1]))
+                    else:
+                        face_coords[1].append(-1)
+
+                    if len(elements) >= 3:
+                        face_coords[2].append(int(elements[2]))
+                    else:
+                        face_coords[2].append(-1)
+                    
+                    face_coords[0].append(int(elements[0]))               
+                
+                self.vertex_indices.append(face_coords[0])
+                self.texture_indices.append(face_coords[1])
+                self.normal_indices.append(face_coords[2])
+
+            # Normals of faces
+            elif line[0] == "vn":
+                self.normals.append([float(line[1]), float(line[2]), float(line[3]), 0])
+            
+            # Texture coordinates
+            elif line[0] == "vt":
+                self.textures.append(np.float64(line[1:]))
+
+            
+
+        """with open(self.filePath) as f:
             for line in f:
                 vals = line.split()
                 if len(vals) == 0:
@@ -85,7 +129,7 @@ class OBJFile:
                 
                 # Texture coordinates
                 elif key == "vt":
-                    self.textures.append(np.float64(vals[1:]))
+                    self.textures.append(np.float64(vals[1:]))"""
 
         minIndex = np.min(self.vertex_indices)
         colors = np.zeros((len(self.vertex_indices), 3))
@@ -96,18 +140,23 @@ class OBJFile:
         component_array['vt'] = np.array(self.texture_indices, dtype='i4') - minIndex 
         component_array['c'] =  colors
         self.component_array = component_array
-        self.vertices = np.array(self.vertices)
+        self.vertices = np.array(self.vertices, dtype='float64')
         self.normals = np.array(self.normals)
-        self.maxval = np.max(np.abs(self.vertex_indices))
+        self.maxval = np.max(np.abs(self.vertices))
+        #print(self.normal_indices)
         return self.vertices, self.normals, self.component_array
 
     def create_line_generator(self):
-        file = open(self.fileName, mode='r', encoding=self.encoding)
+        with open(self.filePath) as f:
+            for line in f:
+                yield line.split()
 
+
+        """file = open(self.filePath, mode='r', encoding=self.encoding)
         for line in file:
             yield line
 
-        file.close()
+        file.close()"""
 
     
 
